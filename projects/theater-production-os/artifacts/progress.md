@@ -100,3 +100,13 @@
 - scripts/publish-pages.pyでコミット済みアプリだけをgh-pagesへ配信できる。mainへのマージとPR作成は未実施。
 - 今後の候補: 実機Safari確認、稽古・提出物のモジュール化、販売用の独立パッケージ構成。共同編集・クラウド同期・決済は未実装。
 - 再開: README、docs/mvp-next.md、artifacts/verification.mdを読み、作業ブランチでnpm test／npm run test:browserを実行。単体販売向けのライセンスや配布形態はユーザーと決める。
+
+## MVP v0.2 — GitHub・Pages配信記録
+
+- 実装コミット: 29ab2a0e1f26816ce2040c23c5e52157f6913a14
+- 実装ブランチ: tool/theater-production-os/budget-mvp。originへのpush成功。
+- 配信コミット: 065c77b8eaacf11bca444e8f114b551cc76e70b9。gh-pagesへのpush成功、ls-remoteで一致を確認。
+- 配信内容: アプリ28ファイル＋.nojekyll。仕様・テスト・node_modulesは含まない。
+- 配信コミットを別の一時ディレクトリへ取り出し、HTTP配信してサンプル取込みと全8画面をChromiumで起動。HTTPエラー・JavaScript例外0。
+- Pages設定はgh-pages / (root)。想定公開URLは https://humandoll26.github.io/codex-tool-lab/ 。クラウドから公開サイトのHTTP応答は未確認。
+- 「サンプル公演を試す」は既存公演の置換確認あり。ユーザーは必要に応じJSONを書き出してから試す。

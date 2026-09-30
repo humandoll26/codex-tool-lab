@@ -89,3 +89,7 @@ Firefox、Safari、実機のタッチ・ソフトウェアキーボード、ス�
 [ダッシュボードの375px画面](dashboard-mobile.png)と[カレンダーの375px画面](calendar-mobile.png)をサンプル公演で保存。両画面のdocument幅375pxを実測し、横溢れなし。撮影時の日本時間の日付は2026-10-01。
 
 Safari・Firefox・iPhone実機は未検証。データは同じブラウザのlocalStorageに保存し、端末間同期・共同編集・決済は未実装。PagesへのGit配信結果はprogress.mdに記録し、公開URLのHTTP応答はクラウドの接続制約により別途確認が必要。
+
+### 配信ファイルの確認
+
+gh-pagesの配信コミット065c77bを作業ディレクトリと別に展開し、HTTPで起動。入口、ダッシュボード、カレンダー、5モジュールの計8画面を開き、サンプルJSONの取得・取込み成功、HTTPエラーとJavaScript例外0を確認。Markdownのローカル参照44件はリンク切れ0。公開サイト自体とiPhone実機の確認は未実施。
