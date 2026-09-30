@@ -1,0 +1,243 @@
+import { createBudgetEditor } from '../modules/budget/editor.js';
+import { newDocument, newId, emptyBudget, validateDocument,
+  calculateBudget, parseDocument, prepareDocument, readDocument, writeDocument, removeDocument } from './model.js';
+
+const root = document.querySelector('#main');
+const isBudget = document.body.dataset.view === 'budget';
+const storage = { getItem: key => window.localStorage.getItem(key),
+  setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: key => window.localStorage.removeItem(key) };
+const loaded = readDocument(storage);
+let draft = loaded.document ? structuredClone(loaded.document) : newDocument();
+let corrupt = loaded.kind === 'corrupt';
+let saveMessage = loaded.kind === 'saved' ? '保存済みの公演を読み込みました。' :
+  loaded.kind === 'unavailable' ? loaded.error : '公演タイトルとステージ日時を入力して始めてください。';
+let messageType = loaded.kind === 'unavailable' ? 'warning' : '';
+let touched = false;
+let notice, errorSummary, results, exportButton, navigation, backupButton;
+let fields = new Map();
+const yen = value => `${value.toLocaleString('ja-JP')}円`;
+const people = value => `${value.toLocaleString('ja-JP')}人`;
+const paths = { budget: 'project.modules.budget.data', stages: 'project.performanceDates', prices: 'project.ticket.priceCategories' };
+
+function el(tag, props = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [key, value] of Object.entries(props)) {
+    if (key === 'className') node.className = value;
+    else if (key.startsWith('on')) node.addEventListener(key.slice(2).toLowerCase(), value);
+    else if (value !== undefined && value !== null) node.setAttribute(key, value);
+  }
+  for (const child of children.flat()) if (child !== null && child !== undefined) node.append(child instanceof Node ? child : document.createTextNode(String(child)));
+  return node;
+}
+function button(label, action, className = 'secondary') { return el('button', { type: 'button', className, onClick: action }, label); }
+function field(label, path, value, change, options = {}) {
+  const controlId = `field-${path.replaceAll('.', '-')}`;
+  const control = options.options ? el('select', { id: controlId }) : el('input', { id: controlId,
+    type: options.type ?? 'text', ...(options.type === 'number' ? { min: '0', step: '1', inputmode: 'numeric' } : {}) });
+  if (options.options) {
+    if (!options.options.some(o => o.value === value)) control.append(el('option', { value: value ?? '' }, '基準料金を選んでください'));
+    for (const option of options.options) control.append(el('option', { value: option.value }, option.label));
+  }
+  control.value = value ?? '';
+  const error = el('span', { id: `${controlId}-error`, className: 'field-error' });
+  control.setAttribute('aria-labelledby', `${controlId}-label`);
+  control.setAttribute('aria-describedby', error.id);
+  control.addEventListener(options.options ? 'change' : 'input', () => {
+    let next = control.value;
+    if (options.type === 'number') next = next === '' ? '' : Number(next);
+    change(next);
+    update();
+    if (options.rebuild) render();
+  });
+  fields.set(path, { control, error });
+  return el('label', { className: 'field', for: controlId }, el('span', { id: `${controlId}-label` }, label), control, error);
+}
+function mutate(action) { action(); update(); render(); }
+function getBudget() { return draft.project.modules.budget ?? emptyBudget(draft.project.ticket.priceCategories[0]?.id ?? ''); }
+function editBudget(action) {
+  draft.project.modules.budget ??= emptyBudget(draft.project.ticket.priceCategories[0]?.id ?? '');
+  action(draft.project.modules.budget);
+}
+function linkToMaster() { return isBudget ? '../../index.html' : './index.html'; }
+function notify(message, type = '') { saveMessage = message; messageType = type; if (notice) { notice.textContent = message; notice.className = `notice ${type}`; } }
+
+function download(source, name) {
+  const url = URL.createObjectURL(new Blob([source], { type: 'application/json;charset=utf-8' }));
+  const anchor = el('a', { href: url, download: name });
+  document.body.append(anchor); anchor.click(); anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportJSON() {
+  try { download(JSON.stringify(prepareDocument(draft), null, 2), `theater-production-${draft.project.id}.json`); }
+  catch { notify('入力エラーを修正してからJSONを書き出してください。', 'error'); }
+}
+async function importJSON(file) {
+  if (!file) return;
+  let next;
+  try { next = parseDocument(await file.text()); }
+  catch (error) { notify(`取込みできませんでした。現在のデータは変更していません。\n${error.message}`, 'error'); return; }
+  if (!window.confirm(`「${next.project.title}」を取り込み、現在の公演を置き換えますか？`)) return;
+  const result = writeDocument(storage, next);
+  draft = result.document; corrupt = false; touched = true;
+  const url = new URL(location.href); url.searchParams.delete('projectId'); history.replaceState(null, '', url);
+  notify(result.ok ? 'JSONを取り込み、保存しました。' : result.error, result.ok ? '' : 'warning');
+  render();
+}
+function reset() {
+  if (!window.confirm('このOSの公演データを全消去しますか？元に戻せません。必要なら先にJSONを書き出してください。')) return;
+  const result = removeDocument(storage);
+  if (!result.ok) { notify(result.error, 'error'); return; }
+  draft = newDocument(); corrupt = false; touched = false;
+  const url = new URL(location.href); url.searchParams.delete('projectId'); history.replaceState(null, '', url);
+  notify('このOSの保存データを消去しました。新しい公演を入力できます。'); render();
+}
+function update(persist = true) {
+  const issues = validateDocument(draft);
+  if (persist) touched = true;
+  for (const [path, item] of fields) {
+    const matching = touched ? issues.filter(i => i.path === path) : [];
+    item.error.textContent = matching.map(i => i.message).join(' ');
+    item.control.setAttribute('aria-invalid', matching.length ? 'true' : 'false');
+  }
+  const referenceControl = fields.get(`${paths.budget}.referencePriceCategoryId`)?.control;
+  if (referenceControl) for (const option of referenceControl.options) {
+    const price = draft.project.ticket.priceCategories.find(p => p.id === option.value);
+    if (price) option.textContent = `${price.name} · ${typeof price.price === 'number' ? yen(price.price) : '料金未入力'}`;
+  }
+  errorSummary.replaceChildren();
+  if (issues.length && touched) {
+    errorSummary.append(el('strong', {}, '入力を確認してください。現在の入力は保存・計算に使いません。'));
+    const list = el('ul', { className: 'errors' });
+    for (const issue of issues) {
+      const item = fields.get(issue.path);
+      if (item) {
+        const anchor = el('a', { href: `#${item.control.id}` }, `${item.control.labels[0]?.firstChild.textContent}: ${issue.message}`);
+        anchor.addEventListener('click', event => { event.preventDefault(); item.control.focus(); });
+        list.append(el('li', {}, anchor));
+      } else list.append(el('li', {}, `${issue.path}: ${issue.message}`));
+    }
+    errorSummary.append(list);
+  }
+  errorSummary.hidden = !issues.length || !touched;
+  exportButton.disabled = issues.length > 0 || corrupt;
+  if (navigation) {
+    navigation.setAttribute('aria-disabled', issues.length ? 'true' : 'false');
+    navigation.href = `${isBudget ? '../../index.html' : 'modules/budget/index.html'}?projectId=${encodeURIComponent(draft.project.id)}`;
+  }
+  showResults(issues);
+  if (persist) {
+    if (issues.length) notify('未保存の入力があります。エラーを修正すると自動保存します。最後に保存できた公演は保持しています。', 'warning');
+    else if (!corrupt) {
+      const result = writeDocument(storage, draft);
+      draft.project.updatedAt = result.document.project.updatedAt;
+      notify(result.ok ? '自動保存しました。' : result.error, result.ok ? '' : 'warning');
+    }
+  }
+}
+function showResults(issues) {
+  if (!results) return;
+  results.replaceChildren();
+  if (issues.length) { results.append(el('p', { className: 'empty' }, '入力がそろうと試算結果が表示されます。エラーのある値では計算しません。')); return; }
+  if (!draft.project.modules.budget) { results.append(el('p', {}, '予算の入力を開始してください。')); return; }
+  const r = calculateBudget(draft.project);
+  const summary = el('div', { className: 'summary', 'data-testid': 'results' });
+  for (const [label, value, negative] of [
+    ['想定来場者数', people(r.attendees)], ['売上', yen(r.revenue)], ['費用', yen(r.expenses)],
+    ['収支', yen(r.profit), r.profit < 0], ['販売率', r.salesRate === null ? '—' : `${r.salesRate.toFixed(1)}%`],
+    ['基準料金での損益分岐', r.breakEven === null ? '黒字化できない' : people(r.breakEven)]]) {
+    summary.append(el('div', { className: `stat ${negative ? 'negative' : ''}` }, el('span', {}, label), el('strong', {}, value)));
+  }
+  results.append(summary);
+  if (r.breakEven === null) results.append(el('p', { className: 'notice warning' }, 'この基準料金では黒字化できない'));
+  if (r.exceedsCapacity) results.append(el('p', { className: 'notice warning' }, '損益分岐人数が収容可能人数を超える'));
+}
+function masterEditor() {
+  const p = draft.project;
+  const card = el('section', { className: 'card', 'aria-label': '公演情報' }, el('h2', {}, '公演情報'));
+  card.append(el('div', { className: 'grid' },
+    field('公演タイトル（必須）', 'project.title', p.title, v => p.title = v),
+    field('劇団名', 'project.companyName', p.companyName, v => p.companyName = v),
+    field('劇場名', 'project.venue.name', p.venue.name, v => p.venue.name = v)));
+  card.append(el('h3', {}, 'ステージ'), el('p', { className: 'hint' }, '日時は日本時間。販売可能席数を入力してください。'));
+  p.performanceDates.forEach((stage, i) => {
+    const row = el('div', { className: 'row' });
+    row.append(el('div', { className: 'row-fields' },
+      field(`ステージ${i + 1}の日時`, `${paths.stages}.${i}.startsAt`, stage.startsAt.slice(0, 16), v => stage.startsAt = v ? `${v}:00+09:00` : '', { type: 'datetime-local' }),
+      field(`ステージ${i + 1}の販売可能席数`, `${paths.stages}.${i}.capacity`, stage.capacity, v => stage.capacity = v, { type: 'number' })));
+    row.append(button(`ステージ${i + 1}を削除`, () => mutate(() => p.performanceDates.splice(i, 1)), 'danger'));
+    card.append(row);
+  });
+  card.append(button('ステージを追加', () => mutate(() => p.performanceDates.push({ id: newId('stage'), startsAt: '', capacity: 0 }))));
+  card.append(el('h3', {}, '料金区分'));
+  p.ticket.priceCategories.forEach((price, i) => {
+    const row = el('div', { className: 'row' });
+    row.append(el('div', { className: 'row-fields' },
+      field(`料金区分${i + 1}の名称`, `${paths.prices}.${i}.name`, price.name, v => price.name = v),
+      field(`料金区分${i + 1}の料金（円）`, `${paths.prices}.${i}.price`, price.price, v => price.price = v, { type: 'number' })));
+    row.append(button(`料金区分${i + 1}を削除`, () => mutate(() => p.ticket.priceCategories.splice(i, 1)), 'danger'));
+    card.append(row);
+  });
+  card.append(button('料金区分を追加', () => mutate(() => p.ticket.priceCategories.push({ id: newId('price'), name: '', price: 0 }))));
+  card.append(el('p', { className: 'hint' }, 'ステージや料金を削除しても、予算の販売枚数は自動で削除しません。参照エラーが出たら予算側で該当行を削除・修正してください。'));
+  return card;
+}
+function budgetEditor() {
+  return createBudgetEditor({ document: draft, el, field, button, mutate, getBudget,
+    editBudget, paths, yen, fields, update });
+}
+
+function render() {
+  fields = new Map(); navigation = null; results = null;
+  root.replaceChildren();
+  notice = el('div', { className: `notice ${messageType}`, role: 'status', 'aria-live': 'polite', style: 'white-space:pre-wrap' }, saveMessage);
+  root.append(notice);
+  const requestedId = new URL(location.href).searchParams.get('projectId');
+  if (requestedId !== null && requestedId !== draft.project.id) {
+    root.append(el('section', { className: 'card' }, el('h2', {}, '公演が見つかりません'),
+      el('p', {}, '指定された公演IDは、このブラウザの保存データと一致しません。現在のデータは変更していません。'),
+      el('a', { href: linkToMaster(), className: 'button' }, '公演の作成・編集へ戻る')));
+    return;
+  }
+  exportButton = button('JSONを書き出す', exportJSON);
+  const input = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
+  input.addEventListener('change', () => { const file = input.files[0]; input.value = ''; importJSON(file); });
+  const toolbar = el('div', { className: 'toolbar' }, exportButton, button('JSONを取り込む', () => input.click()),
+    button('全データを消去', reset, 'danger'), input);
+  root.append(toolbar);
+  if (corrupt) {
+    exportButton.disabled = true;
+    backupButton = button('破損データをそのまま書き出す', () => download(loaded.raw, 'theater-production-recovery.json'));
+    root.append(el('section', { className: 'card' }, el('h2', {}, '保存データを読み込めません'),
+      el('p', {}, '破損した保存データは上書きしていません。元データを書き出して保管し、正常なJSONを取り込むか、確認のうえ全消去してください。'),
+      el('p', { className: 'hint' }, loaded.error), backupButton));
+    return;
+  }
+  errorSummary = el('div', { className: 'notice error', role: 'alert', 'data-testid': 'validation-errors' });
+  root.append(errorSummary);
+  navigation = el('a', { className: 'button' }, isBudget ? '公演情報へ戻る' : '予算モジュールを開く');
+  navigation.addEventListener('click', event => {
+    const issues = validateDocument(draft);
+    if (issues.length) { event.preventDefault(); update(); notify('移動前に入力エラーを修正してください。未保存の値を失わないよう、この画面で修正できます。', 'warning'); }
+    else if (messageType === 'warning') { event.preventDefault(); notify('ブラウザに保存できていないため、別画面へデータを引き継げません。この画面で編集し、JSONを書き出してください。', 'warning'); }
+  });
+  root.append(el('div', { className: 'heading' }, el('p', { className: 'hint' }, '1公演 · 日本時間 · 自動保存'), navigation));
+  if (isBudget) {
+    const details = el('details', {}, el('summary', {}, '公演情報を作成・編集する'), masterEditor());
+    details.open = loaded.kind !== 'saved' || validateDocument(draft).some(i => i.path.startsWith(paths.stages) || i.path.startsWith(paths.prices) || i.path === 'project.title');
+    root.append(details, budgetEditor());
+  } else root.append(masterEditor(), el('details', {}, el('summary', {}, '予算の参照エラー・入力を修正する'), budgetEditor()));
+  results = el('div', { 'aria-live': 'polite', 'aria-atomic': 'true' });
+  root.append(el('section', { className: 'card', 'aria-label': '試算結果' }, el('h2', {}, '公演予算の試算'), results));
+  if (!isBudget) {
+    const modules = [['チラシ', '掲載情報・校正'], ['配布', '配布先・部数'], ['SNS・広報', '告知計画'],
+      ['チケット', '販売進捗'], ['稽古', '日程・連絡調整'], ['提出物', '劇場への提出管理']];
+    root.append(el('section', { className: 'card' }, el('h2', {}, 'これからのモジュール'),
+      el('p', { className: 'hint' }, '初回は予算のみ利用できます。カレンダー・ダッシュボードも今後の予定です。'),
+      el('ul', { className: 'module-list' }, modules.map(([name, description]) => el('li', {}, el('strong', {}, name), el('p', { className: 'hint' }, `${description} · 将来予定`))))));
+  }
+  update(false);
+}
+window.addEventListener('beforeunload', event => {
+  if (touched && (validateDocument(draft).length || messageType === 'warning')) { event.preventDefault(); event.returnValue = ''; }
+});
+render();
