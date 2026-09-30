@@ -110,3 +110,9 @@
 - 配信コミットを別の一時ディレクトリへ取り出し、HTTP配信してサンプル取込みと全8画面をChromiumで起動。HTTPエラー・JavaScript例外0。
 - Pages設定はgh-pages / (root)。想定公開URLは https://humandoll26.github.io/codex-tool-lab/ 。クラウドから公開サイトのHTTP応答は未確認。
 - 「サンプル公演を試す」は既存公演の置換確認あり。ユーザーは必要に応じJSONを書き出してから試す。
+
+## Chrome危険サイト警告の調査
+
+- ユーザー提供URL https://humandoll26.github.io/codex-tool-lab/ を対象に、配信ブランチと実装の一致、ローカルでの全8画面の通信経路を確認。
+- 外部通信・GET以外の送信・JavaScript例外0。公開サイトやGoogle判定情報はプロキシ403により未取得。誤検知との断定はしない。
+- 詳細と再開手順はartifacts/safe-browsing-investigation.md。Googleへの報告や設定変更は未実施。
