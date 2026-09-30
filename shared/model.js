@@ -1,4 +1,7 @@
 import { calculateBudget } from '../modules/budget/calculator.js';
+import { validateModules } from './modules.js';
+import { validDate } from './common.js';
+import { validateSchedule } from './schedule.js';
 export { calculateBudget } from '../modules/budget/calculator.js';
 
 export const STORAGE_KEY = 'codex-tool-lab:theater-production-os:v1';
@@ -23,12 +26,6 @@ export function newDocument() {
     ticket: { priceCategories: [{ id: priceId, name: '一般', price: 0 }] },
     modules: { budget: emptyBudget(priceId) }, calendarEvents: [], documents: [],
     updatedAt: new Date().toISOString() } };
-}
-
-function validDate(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(date.valueOf()) && date.toISOString().slice(0, 10) === value;
 }
 
 export function validStageDate(value) {
@@ -146,6 +143,8 @@ export function validateDocument(document) {
       try { calculateBudget(p); } catch (error) { issue(base, error.message); }
     }
   }
+  issues.push(...validateModules(p));
+  issues.push(...validateSchedule(p));
   return issues;
 }
 

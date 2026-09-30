@@ -9,7 +9,7 @@ export function createBudgetEditor({ document, el, field, button, mutate, getBud
   card.append(el('h3', {}, '固定費の明細'));
   if (!b.data.fixedCosts.length) card.append(el('p', { className: 'hint' }, '固定費は未登録（0円）。会場費や制作費を追加してください。'));
   b.data.fixedCosts.forEach((cost, i) => {
-    const row = el('div', { className: 'row' });
+    const row = el('div', { className: 'row', id: `item-${cost.id}` });
     row.append(el('div', { className: 'row-fields' },
       field(`固定費${i + 1}の名称`, `${paths.budget}.fixedCosts.${i}.name`, cost.name, v => editBudget(m => m.data.fixedCosts[i].name = v)),
       field(`固定費${i + 1}の金額（円）`, `${paths.budget}.fixedCosts.${i}.amount`, cost.amount, v => editBudget(m => m.data.fixedCosts[i].amount = v), { type: 'number' })));

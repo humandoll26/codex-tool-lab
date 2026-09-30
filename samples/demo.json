@@ -1,0 +1,241 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "id": "project-demo",
+    "title": "架空公演",
+    "companyName": "サンプル劇団",
+    "timeZone": "Asia/Tokyo",
+    "venue": {
+      "name": "サンプル劇場"
+    },
+    "performanceDates": [
+      {
+        "id": "stage-1",
+        "startsAt": "2026-11-30T14:00:00+09:00",
+        "capacity": 100
+      },
+      {
+        "id": "stage-2",
+        "startsAt": "2026-11-30T18:00:00+09:00",
+        "capacity": 100
+      }
+    ],
+    "ticket": {
+      "priceCategories": [
+        {
+          "id": "general",
+          "name": "一般",
+          "price": 3000
+        }
+      ]
+    },
+    "modules": {
+      "budget": {
+        "id": "budget",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 0,
+        "alerts": [],
+        "data": {
+          "fixedCosts": [
+            {
+              "id": "cost-1",
+              "name": "会場費",
+              "amount": 100000
+            }
+          ],
+          "variableCostPerAttendee": 500,
+          "plannedSales": [
+            {
+              "stageId": "stage-1",
+              "priceCategoryId": "general",
+              "quantity": 80
+            },
+            {
+              "stageId": "stage-2",
+              "priceCategoryId": "general",
+              "quantity": 80
+            }
+          ],
+          "referencePriceCategoryId": "general"
+        }
+      },
+      "flyer": {
+        "id": "flyer",
+        "status": "in-progress",
+        "startDate": "2026-10-01",
+        "dueDate": "2026-11-20",
+        "progress": 20,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "introduction": "これは動作確認用の架空公演です。",
+          "contactText": "",
+          "officialUrl": "",
+          "printDate": "2026-10-15",
+          "deliveryDate": "2026-10-20",
+          "items": [
+            {
+              "id": "demo-copy",
+              "name": "見どころ",
+              "text": "小さな舞台から始まる、架空の物語。",
+              "status": "approved"
+            }
+          ]
+        }
+      },
+      "distribution": {
+        "id": "distribution",
+        "status": "in-progress",
+        "startDate": "2026-10-01",
+        "dueDate": "2026-11-20",
+        "progress": 20,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "printed": 500,
+          "items": [
+            {
+              "id": "demo-distribution",
+              "name": "サンプル劇場",
+              "assignee": "制作A",
+              "date": "2026-10-25",
+              "method": "hand",
+              "planned": 100,
+              "shipped": 20,
+              "status": "confirmed"
+            }
+          ]
+        }
+      },
+      "publicity": {
+        "id": "publicity",
+        "status": "in-progress",
+        "startDate": "2026-10-01",
+        "dueDate": "2026-11-20",
+        "progress": 20,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-post",
+              "title": "公演のお知らせ",
+              "channel": "SNS",
+              "date": "2026-10-25",
+              "text": "架空公演のご案内です。",
+              "materials": "架空のチラシ画像",
+              "status": "draft"
+            }
+          ]
+        }
+      },
+      "tickets": {
+        "id": "tickets",
+        "status": "in-progress",
+        "startDate": "2026-10-01",
+        "dueDate": "2026-11-20",
+        "progress": 20,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "sales": [
+            {
+              "stageId": "stage-1",
+              "priceCategoryId": "general",
+              "quantity": 25
+            },
+            {
+              "stageId": "stage-2",
+              "priceCategoryId": "general",
+              "quantity": 30
+            }
+          ]
+        }
+      }
+    },
+    "calendarEvents": [
+      {
+        "dataVersion": 1,
+        "id": "event-5b909322-0c0f-4f1c-8ccf-9509c1e296c5",
+        "projectId": "project-demo",
+        "moduleId": "budget",
+        "title": "予算・料金を検討",
+        "date": "2026-08-22",
+        "type": "template",
+        "status": "planned",
+        "relatedItemId": null,
+        "templateId": "budget-start",
+        "baseDate": "2026-11-30"
+      },
+      {
+        "dataVersion": 1,
+        "id": "event-aa3bf25a-d0fb-471c-8dcf-39400dbdc57f",
+        "projectId": "project-demo",
+        "moduleId": "flyer",
+        "title": "チラシ掲載情報を準備",
+        "date": "2026-09-16",
+        "type": "template",
+        "status": "planned",
+        "relatedItemId": null,
+        "templateId": "flyer-start",
+        "baseDate": "2026-11-30"
+      },
+      {
+        "dataVersion": 1,
+        "id": "event-47b250be-a606-4cdd-9cd3-f87c82d53c16",
+        "projectId": "project-demo",
+        "moduleId": "flyer",
+        "title": "チラシ入稿",
+        "date": "2026-10-11",
+        "type": "template",
+        "status": "planned",
+        "relatedItemId": null,
+        "templateId": "flyer-print",
+        "baseDate": "2026-11-30"
+      },
+      {
+        "dataVersion": 1,
+        "id": "event-90245a0c-0de7-4e1a-818e-6af5352c05bb",
+        "projectId": "project-demo",
+        "moduleId": "publicity",
+        "title": "公演告知を開始",
+        "date": "2026-10-16",
+        "type": "template",
+        "status": "planned",
+        "relatedItemId": null,
+        "templateId": "publicity-start",
+        "baseDate": "2026-11-30"
+      },
+      {
+        "dataVersion": 1,
+        "id": "event-182f74ba-2a5f-45a8-98c6-54df50ab23fb",
+        "projectId": "project-demo",
+        "moduleId": "tickets",
+        "title": "チケット販売進捗を確認",
+        "date": "2026-10-21",
+        "type": "template",
+        "status": "planned",
+        "relatedItemId": null,
+        "templateId": "tickets-start",
+        "baseDate": "2026-11-30"
+      },
+      {
+        "dataVersion": 1,
+        "id": "event-d89f0337-8008-4297-915a-9b47e2c67d27",
+        "projectId": "project-demo",
+        "moduleId": "distribution",
+        "title": "チラシ配布を確認",
+        "date": "2026-10-31",
+        "type": "template",
+        "status": "planned",
+        "relatedItemId": null,
+        "templateId": "distribution-start",
+        "baseDate": "2026-11-30"
+      }
+    ],
+    "documents": [],
+    "updatedAt": "2026-09-30T20:00:00+09:00"
+  }
+}
