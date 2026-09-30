@@ -59,3 +59,13 @@ mainは確認済みの基準。1タスク・1ツールを基本にします。
 コミット例: docs(my-tool): snapshot MVP spec、feat(my-tool): add CSV export、test(my-tool): cover empty input。
 PRに対象、仕様パス、変更、検証結果、既知の制約を記載し、確認後のsquash mergeを基本とします。
 停止した実験はREADMEに停止理由を残します。
+
+## 統合ツールとモジュール
+
+複数の作業モジュールを束ねるツールは、親プロジェクト内の `modules/<module-id>/` で管理します。
+[複数ツールの運用・配置](docs/repository-workflow.md)に配置、段階開発、仕様とアーカイブの扱いを定めています。
+
+- [劇団制作OSの設計入口](projects/theater-production-os/index.md)
+- [ツール一覧](projects/README.md)
+
+現行SPECは実装後も残し、差し替えた旧仕様と完了TASKだけを必要に応じてdocs/archive/へ保存します。

@@ -1,0 +1,34 @@
+# モジュール一覧
+
+各モジュールはOSの子フォルダに置き、単体起動とOSからの起動の両方に対応する。
+今は全モジュール未実装。下表のパスは計画であり、必要になった順に作る。
+
+| ID | 役割 | 状態・予定 |
+| --- | --- | --- |
+| venue | 劇場・日程・会場候補 | planned |
+| rights | 作品・上演権確認 | planned |
+| budget | 予算・料金・損益分岐 | draft：初回タスク |
+| flyer | チラシ掲載情報・校正・入稿 | planned |
+| distribution | チラシ配布先・部数 | planned |
+| publicity | SNS・告知計画 | planned |
+| tickets | ステージ別販売進捗 | planned |
+| program | パンフ原稿・校正 | planned |
+| rehearsal | 稽古・連絡調整 | planned：原本優先度高 |
+| stage-operations | 建込・仕込み・タイムスケジュール | planned：既存ツール接続候補 |
+| front-desk | 受付準備 | planned |
+| show-day | 受付・物販・当日運営 | planned |
+| settlement | 決算 | planned |
+| contracts | 契約・支払い | planned：拡張 |
+| funding | 助成金・協賛・広告 | planned：拡張 |
+| travel | 交通・宿泊・ケータリング | planned：拡張 |
+| submissions | 申請・劇場提出物 | planned：原本優先度高 |
+| performance-archive | 公演資料・実績・引継ぎ | planned：拡張 |
+
+公演マスター、カレンダー、ダッシュボードはOS側の機能。
+将来の電子チケット・QR受付は独立サブシステムとして別仕様で扱う。
+
+## モジュール追加時
+
+`modules/<module-id>/` にREADME、必要なソース・テストを置く。対象が増えたらそのモジュールにSPEC/TASKを切り出し、OSのSPECと一覧からリンクする。
+OS共通仕様とモジュール固有仕様の重複コピーを避け、共通データ契約を参照する。
+状態は `planned / draft / implementing / usable / parked`。実装済みの判定には受入条件と検証記録が必要。
