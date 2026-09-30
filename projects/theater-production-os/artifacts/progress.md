@@ -67,3 +67,17 @@
 - 既存の手元リポジトリではgit fetch origin後、この作業ブランチへ切り替える。未コミットの手元変更がある場合は先に保管する。
 - PRは未作成、mainへのマージも未実施。GitHubのWeb画面からPRを作成できる。
 - 前項の「未コミット・未push・ユーザー確認待ち」は停止時点の履歴。本項でコミットとpushの成功を記録した。
+
+
+## iPhone確認用のPages配信準備 — 2026-09-30
+
+- ユーザーがリポジトリを公開し、Pages公開を依頼。
+- アプリ7ファイルと.nojekyllだけの配信ツリーを作り、gh-pagesブランチへpush成功。remoteのコミット一致を確認。
+- 配信コミット: f79477c8c8ed27351975b5dc8c46b82a011906d2
+- 実装の基準コミット: b817beca86c3f61f32128f192c02c9298b772853
+- OS入口は配信ルート/index.html、予算入口は/modules/budget/index.html。相対パスを維持。
+- GitHub Pages設定APIへのPOSTはForbiddenで拒否され、設定変更を確認できていない。
+- 公開先URLへの読取もクラウドのプロキシでCONNECT 403。公開完了やHTTP 200は未確認。
+- ユーザーの必要操作: GitHub Settings → Pages → Deploy from a branch → gh-pages / (root) → Save。
+- 設定・配信完了後の想定URL: https://humandoll26.github.io/codex-tool-lab/
+- アプリコード・mainブランチ・GitHubの通信設定や認証情報は変更していない。
