@@ -55,3 +55,15 @@
 - 結論: 現在のGitHub API操作は、GitHub APIのHTTP認証判定より前にクラウドのプロキシで拒否されている。トークン不足や失効が原因とは断定できない。
 - 次の対応案: 環境設定でapi.github.comへのHTTPS通信許可を追加・反映し、その後同じ読取を再実行。通信が通ってからAPI認証・リポジトリ権限を確認する。
 - 通信設定の変更、新たなトークン要求、push、PR作成はまだ行っていない。ユーザーの確認待ち。
+
+
+## GitHubへの受渡し — 2026-09-30
+
+- ユーザーの依頼により、実装をコミットし、Gitの既存認証でpushを実行。
+- 実装コミット: bdd4dbf（feat(theater-production-os): add project master and budget module）。
+- git push --set-upstream origin tool/theater-production-os/budget-mvp が成功し、GitHubに同名ブランチを作成。
+- GitHub APIへの接続拒否はGit pushを妨げなかった。通信設定や認証情報は変更していない。
+- コードはGitHubから取得可能。初回取得は git clone --branch tool/theater-production-os/budget-mvp https://github.com/humandoll26/codex-tool-lab.git 。
+- 既存の手元リポジトリではgit fetch origin後、この作業ブランチへ切り替える。未コミットの手元変更がある場合は先に保管する。
+- PRは未作成、mainへのマージも未実施。GitHubのWeb画面からPRを作成できる。
+- 前項の「未コミット・未push・ユーザー確認待ち」は停止時点の履歴。本項でコミットとpushの成功を記録した。
