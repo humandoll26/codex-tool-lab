@@ -1,0 +1,11 @@
+{
+  "name": "theater-production-os",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:browser": "node --test tests/browser/*.test.js"
+  },
+  "engines": { "node": ">=24" },
+  "devDependencies": { "playwright": "1.63.0" }
+}

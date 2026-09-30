@@ -1,0 +1,18 @@
+export function fixture() {
+  return { schemaVersion: 1, project: { id: 'project-demo', title: '架空公演', companyName: 'サンプル劇団',
+    timeZone: 'Asia/Tokyo', venue: { name: 'サンプル劇場' }, performanceDates: [
+      { id: 'stage-1', startsAt: '2026-11-30T14:00:00+09:00', capacity: 100 },
+      { id: 'stage-2', startsAt: '2026-11-30T18:00:00+09:00', capacity: 100 }],
+    ticket: { priceCategories: [{ id: 'general', name: '一般', price: 3000 }] },
+    modules: { budget: { id: 'budget', status: 'in-progress', startDate: null, dueDate: null,
+      progress: 0, alerts: [], data: { fixedCosts: [{ id: 'cost-1', name: '会場費', amount: 100000 }],
+        variableCostPerAttendee: 500, plannedSales: [
+          { stageId: 'stage-1', priceCategoryId: 'general', quantity: 80 },
+          { stageId: 'stage-2', priceCategoryId: 'general', quantity: 80 }], referencePriceCategoryId: 'general' } } },
+    calendarEvents: [], documents: [], updatedAt: '2026-09-30T20:00:00+09:00' } };
+}
+export function memoryStorage() {
+  const data = new Map();
+  return { data, getItem: key => data.get(key) ?? null,
+    setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) };
+}
