@@ -93,3 +93,7 @@ Safari・Firefox・iPhone実機は未検証。データは同じブラウザのl
 ### 配信ファイルの確認
 
 gh-pagesの配信コミット065c77bを作業ディレクトリと別に展開し、HTTPで起動。入口、ダッシュボード、カレンダー、5モジュールの計8画面を開き、サンプルJSONの取得・取込み成功、HTTPエラーとJavaScript例外0を確認。Markdownのローカル参照44件はリンク切れ0。公開サイト自体とiPhone実機の確認は未実施。
+
+### 手元ファイルの警告原因調査
+
+外部送信・自動転送・悪性HTML入力・ダウンロード形式を検証するブラウザテストを追加。全8画面と書出し操作に外部通信・自動ダウンロード・入力スクリプト実行なし。npm testは66件、npm run test:browserは22件成功。詳細は[safe-browsing-investigation.md](safe-browsing-investigation.md)。アプリの処理とPages配信は変更していない。

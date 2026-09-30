@@ -375,3 +375,48 @@ test('MVP-08: legacy unknown modules produce no false links and malformed hashes
   assert.ok((await page.locator('#main').innerText()).includes('未対応モジュール'));
   assert.equal(await page.locator('a[href*="__proto__"]').count(), 0);
 });
+
+test('local security checks: all entrances keep hostile text inert, make no external requests and only export data on request', async t => {
+  const d = fullFixture();
+  const payload = '<img src="https://example.invalid/leak" onerror="window.auditExecuted=true"><script>window.auditExecuted=true</script>';
+  d.project.title = payload;
+  d.project.companyName = payload;
+  d.project.modules.flyer.data.introduction = payload;
+  d.project.modules.publicity.data.items.push({ id: 'audit-post', title: payload, channel: 'SNS', date: tokyoToday(), text: payload, materials: '', status: 'draft' });
+  d.project.modules.distribution.data.printed = 1;
+  d.project.modules.distribution.data.items.push({ id: 'audit-distribution', name: payload, assignee: '', method: 'hand', date: null, planned: 1, shipped: 0, status: 'uncontacted' });
+  const page = await setup(t, { saved: d });
+  const externalRequests = [], outgoingRequests = [];
+  let downloadCount = 0;
+  page.on('request', request => {
+    if (new URL(request.url()).origin !== origin) externalRequests.push(request.url());
+    if (request.method() !== 'GET') outgoingRequests.push(request.method());
+  });
+  // Block attempted external access as well as recording it; never send test data.
+  await page.context().route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+  page.on('download', () => downloadCount++);
+  const entrances = ['index.html', 'dashboard.html', 'calendar.html', ...Object.keys(DEFINITIONS).map(id => `modules/${id}/index.html`)];
+  for (const entrance of entrances) {
+    await page.goto(origin + prefix + entrance);
+    assert.equal(await page.evaluate(() => Boolean(window.auditExecuted)), false, entrance);
+    assert.equal(await page.locator('#main img, #main script, #main iframe, form, input[type=password]').count(), 0, entrance);
+    assert.equal(await page.locator('a').evaluateAll(nodes => nodes.some(a => new URL(a.href).protocol !== 'http:' || new URL(a.href).origin !== location.origin)), false, entrance);
+  }
+  assert.equal(downloadCount, 0, 'visiting pages does not initiate downloads');
+  for (const [id, label, filename] of [
+    ['flyer', '掲載情報を書き出す', 'flyer.txt'],
+    ['distribution', '配布CSVを書き出す', 'distribution.csv'],
+    ['publicity', '投稿計画CSVを書き出す', 'publicity.csv'],
+    ['tickets', '販売CSVを書き出す', 'tickets.csv']
+  ]) {
+    await page.goto(origin + prefix + `modules/${id}/index.html`);
+    const waiting = page.waitForEvent('download');
+    await page.getByRole('button', { name: label, exact: true }).click();
+    assert.equal((await waiting).suggestedFilename(), filename);
+  }
+  const exported = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click()));
+  assert.equal(exported.project.title, payload);
+  assert.equal(downloadCount, 5, 'only explicit export actions download files');
+  assert.deepEqual(externalRequests, []);
+  assert.deepEqual(outgoingRequests, []);
+});
