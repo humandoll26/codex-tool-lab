@@ -1,0 +1,23 @@
+# 劇団制作OS — 設計の入口
+
+- 状態: **draft（仕様登録済み・アプリ未実装）**
+- プロジェクトID: `theater-production-os`
+- 実装予定のOS入口: `index.html`
+- 実装予定のモジュール入口: `modules/<module-id>/index.html`
+
+## 読む順番
+
+1. [README](README.md): 状況・利用方法
+2. [統合仕様 v0.1](docs/specs/theater-production-os-spec-v0.1.md): Notionの全文
+3. [構成・開発段階](docs/architecture.md): OSとモジュールの関係
+4. [今回の実装仕様](SPEC.md): 共通データと予算モジュール
+5. [今回の作業指示](TASK.md): Cloudへ渡す範囲
+6. [共通データ契約 v0.1](docs/data-contract-v0.1.md)
+7. [モジュール一覧](modules/README.md)
+8. [検証記録](artifacts/verification.md)
+9. [設計資料のアーカイブ](docs/archive/README.md)
+
+## 最初の作業
+
+公演マスターの最小入力、共通保存、予算・料金・損益分岐モジュールを作る。
+カレンダーとダッシュボードは、実用モジュールが揃った後の統合段階で実装する。
