@@ -81,3 +81,22 @@
 - ユーザーの必要操作: GitHub Settings → Pages → Deploy from a branch → gh-pages / (root) → Save。
 - 設定・配信完了後の想定URL: https://humandoll26.github.io/codex-tool-lab/
 - アプリコード・mainブランチ・GitHubの通信設定や認証情報は変更していない。
+
+## 継続MVP — 作業中
+
+- 2026-09-30: ユーザーから継続実装の許可。docs/mvp-next.mdに範囲・判断・受入条件を追加。
+- 予算＋flyer/distribution/publicity/ticketsの5モジュール、カレンダー・逆算予定・ダッシュボードを順次実装する。
+- 旧phase-1保存契約とデータを保持。実装PR未採用のため初回TASKをアーカイブしない。
+- この項目時点では追加モジュール・OS横断機能の実装検証は未完了。
+
+## 継続MVP — 実装・検証完了
+
+- 2026-09-30: MVP v0.2として5モジュール（予算・チラシ・配布・SNS広報・販売進捗）、ダッシュボード、月間／今週／今日カレンダー、逆算テンプレートを実装。
+- modules/<id>/に単体入口・固有モデル・画面・READMEを配置。共通保存・マスター連動はshared/に集約。
+- モジュール状態／開始日／期限／進捗、部数／販売集計、原稿テキストとCSV出力、該当作業への予定リンクを追加。
+- JSONはschemaVersion 1と旧保存キーを保持。未知拡張・旧予定を保持し、互換性のない旧モジュールは確認なしに初期化しない。
+- samples/demo.jsonと「サンプル公演を試す」を追加。既存公演の置換は確認を要求する。
+- 単体66件、ブラウザ21件成功。375px表示の横溢れなし。詳細はverification.md。
+- scripts/publish-pages.pyでコミット済みアプリだけをgh-pagesへ配信できる。mainへのマージとPR作成は未実施。
+- 今後の候補: 実機Safari確認、稽古・提出物のモジュール化、販売用の独立パッケージ構成。共同編集・クラウド同期・決済は未実装。
+- 再開: README、docs/mvp-next.md、artifacts/verification.mdを読み、作業ブランチでnpm test／npm run test:browserを実行。単体販売向けのライセンスや配布形態はユーザーと決める。

@@ -16,13 +16,13 @@ flowchart TD
   Modules --> Budget["budget：予算・料金"]
   Modules --> Flyer["flyer：チラシ"]
   Modules --> More["その他の作業モジュール"]
-  Entry --> Calendar["制作カレンダー（後続段階）"]
-  Entry --> Dashboard["ダッシュボード（後続段階）"]
+  Entry --> Calendar["制作カレンダー"]
+  Entry --> Dashboard["ダッシュボード"]
   Budget --> Shared
   Flyer --> Shared
 ```
 
-公演マスター、共通保存、予算はphase-1で実装済み。図の他モジュール・カレンダー・ダッシュボードは計画。
+公演マスター、共通保存、予算・チラシ・配布・SNS・販売進捗、カレンダー・逆算予定・ダッシュボードはOS MVP v0.2で実装済み。他モジュールは計画。
 カレンダーとダッシュボードはOS側の横断UI。各モジュールは公演ID、モジュールID、作業IDを介して接続する。
 初期の表示構成は最小の公演入力とモジュールへの導線でよい。
 

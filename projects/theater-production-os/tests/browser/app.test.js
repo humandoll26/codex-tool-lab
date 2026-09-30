@@ -7,6 +7,8 @@ import path from 'node:path';
 import { chromium } from 'playwright';
 import { fixture } from '../fixture.js';
 import { STORAGE_KEY } from '../../shared/model.js';
+import { DEFINITIONS } from '../../shared/modules.js';
+import { generateTemplate, tokyoToday, addDays } from '../../shared/schedule.js';
 
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
 let server, browser, origin;
@@ -232,4 +234,144 @@ test('unknown projectId never edits another project', async t => {
   assert.equal(await page.locator('input').count(), 0); assert.equal(await stored(page), original);
   await page.getByRole('link', { name: '公演の作成・編集へ戻る' }).click();
   await page.waitForURL('**/index.html'); assert.equal(await page.getByLabel('公演タイトル（必須）', { exact: true }).inputValue(), '架空公演');
+});
+
+function fullFixture() {
+  const d = fixture();
+  for (const id of ['flyer', 'distribution', 'publicity', 'tickets']) d.project.modules[id] = {
+    id, status: 'not-started', startDate: null, dueDate: null, progress: 0, alerts: [], data: DEFINITIONS[id].defaults() };
+  return d;
+}
+test('MVP-01/02/10: flyer editing, master-linked preview, text export and saved approval', async t => {
+  const page = await setup(t, { saved: fullFixture(), width: 375 });
+  await page.goto(origin + prefix + 'modules/flyer/index.html');
+  await page.getByLabel('公演紹介文', { exact: true }).fill('<script>架空紹介</script>');
+  await page.getByRole('button', { name: '原稿項目を追加', exact: true }).click();
+  await page.getByLabel('原稿1の項目名', { exact: true }).fill('ご案内');
+  await page.getByLabel('原稿1の本文', { exact: true }).fill('架空の本文');
+  await page.getByLabel('原稿1の校正状態', { exact: true }).selectOption('approved');
+  await page.getByLabel('入稿予定日', { exact: true }).fill('2026-10-15');
+  await page.getByLabel('チラシの状態', { exact: true }).selectOption('in-progress');
+  const out = await downloadJSON(page, () => page.getByRole('button', { name: '掲載情報を書き出す', exact: true }).click());
+  assert.ok(out.includes('架空公演')); assert.ok(out.includes('3,000円')); assert.ok(out.includes('架空の本文'));
+  assert.equal(await page.locator('script:not([src])').count(), 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.reload(); assert.equal(await page.getByLabel('原稿1の校正状態', { exact: true }).inputValue(), 'approved');
+  assert.equal(await page.getByLabel('チラシの状態', { exact: true }).inputValue(), 'in-progress');
+});
+test('MVP-03: distribution quantities, validation protection and CSV export', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + prefix + 'modules/distribution/index.html');
+  await page.getByLabel('印刷総部数', { exact: true }).fill('500');
+  await page.getByRole('button', { name: '配布先を追加', exact: true }).click();
+  await page.getByLabel('配布先1の名称', { exact: true }).fill('架空劇場');
+  await page.getByLabel('配布先1の予定部数', { exact: true }).fill('100');
+  await page.getByLabel('配布先1の配布済み部数', { exact: true }).fill('20');
+  assert.ok((await text(page)).includes('480部')); assert.ok((await text(page)).includes('400部'));
+  const saved = await stored(page);
+  await page.getByLabel('配布先1の配布済み部数', { exact: true }).fill('101');
+  assert.equal(await stored(page), saved); assert.equal(await page.getByLabel('配布先1の配布済み部数', { exact: true }).getAttribute('aria-invalid'), 'true');
+  await page.getByLabel('配布先1の配布済み部数', { exact: true }).fill('20');
+  const csv = await downloadJSON(page, () => page.getByRole('button', { name: '配布CSVを書き出す', exact: true }).click());
+  assert.ok(csv.includes('架空劇場')); assert.ok(csv.includes('"100","20"'));
+});
+test('MVP-04/08: publicity row creates a calendar event with a deep link', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + prefix + 'modules/publicity/index.html');
+  await page.getByRole('button', { name: '投稿を追加', exact: true }).click();
+  await page.getByLabel('投稿1の題名', { exact: true }).fill('公開予定');
+  await page.getByLabel('投稿1の予定日', { exact: true }).fill(tokyoToday());
+  await page.getByLabel('投稿1の原稿', { exact: true }).fill('投稿本文');
+  const out = await downloadJSON(page, () => page.getByRole('button', { name: 'この原稿を書き出す', exact: true }).click()); assert.equal(out, '投稿本文');
+  await page.getByRole('link', { name: 'カレンダー', exact: true }).click(); await page.waitForURL('**/calendar.html?projectId=*');
+  await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today');
+  const link = page.getByRole('link', { name: /投稿：公開予定/ }); await link.click(); await page.waitForURL('**/modules/publicity/index.html?projectId=*#item-*');
+  assert.equal(await page.getByLabel('投稿1の原稿', { exact: true }).inputValue(), '投稿本文');
+  await page.getByLabel('投稿1の公開状態', { exact: true }).selectOption('published');
+  await page.reload(); assert.equal(await page.getByLabel('投稿1の公開状態', { exact: true }).inputValue(), 'published');
+});
+test('MVP-05: tickets show remaining seats, preserve budget and reject overselling', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + prefix + 'modules/tickets/index.html');
+  await page.getByLabel('ステージ1・一般の実績販売枚数', { exact: true }).fill('25');
+  assert.ok((await text(page)).includes('175席')); assert.ok((await text(page)).includes('75,000円')); assert.ok((await text(page)).includes('12.5%'));
+  const saved = await stored(page); assert.equal(JSON.parse(saved).project.modules.budget.data.plannedSales[0].quantity, 80);
+  await page.getByLabel('ステージ1・一般の実績販売枚数', { exact: true }).fill('101'); assert.equal(await stored(page), saved);
+  await page.getByLabel('ステージ1・一般の実績販売枚数', { exact: true }).fill('25');
+  const savedAfterFix = await stored(page);
+  await page.getByText('公演情報を作成・編集する', { exact: true }).click();
+  await page.getByLabel('ステージ1の販売可能席数', { exact: true }).fill('20'); assert.equal(await stored(page), savedAfterFix);
+  assert.ok((await page.getByTestId('validation-errors').innerText()).includes('実績販売枚数'));
+});
+test('MVP-06/07/09/10: calendar manual editing, generation cancellation, stable IDs and mobile month', async t => {
+  const page = await setup(t, { saved: fullFixture(), width: 375 }); await page.goto(origin + prefix + 'calendar.html');
+  await page.getByRole('button', { name: '予定を追加', exact: true }).click();
+  const title = page.getByLabel('予定1の名称', { exact: true });
+  await title.pressSequentially('手動予定'); assert.equal(await title.inputValue(), '手動予定');
+  await page.getByLabel('予定1のモジュール', { exact: true }).selectOption('flyer');
+  await page.getByRole('button', { name: '逆算予定を生成・更新', exact: true }).click();
+  let saved = JSON.parse(await stored(page)); assert.equal(saved.project.calendarEvents.length, 7);
+  const ids = saved.project.calendarEvents.map(e => e.id);
+  page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: '逆算予定を生成・更新', exact: true }).click();
+  assert.deepEqual(JSON.parse(await stored(page)).project.calendarEvents.map(e => e.id), ids);
+  await page.getByLabel('チラシ入稿：本番何日前', { exact: true }).fill('30');
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: '逆算予定を生成・更新', exact: true }).click();
+  saved = JSON.parse(await stored(page)); assert.deepEqual(saved.project.calendarEvents.map(e => e.id), ids);
+  assert.equal(saved.project.calendarEvents.find(e => e.templateId === 'flyer-print').date, '2026-10-31');
+  assert.equal(saved.project.calendarEvents[0].title, '手動予定');
+  await page.getByLabel('表示する月', { exact: true }).fill('2026-10');
+  assert.equal(await page.locator('.calendar-day').count(), 31);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByLabel('予定のモジュールフィルタ', { exact: true }).selectOption('flyer');
+  await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('week');
+  await page.reload(); assert.equal(JSON.parse(await stored(page)).project.calendarEvents.length, 7);
+});
+test('MVP-06: dashboard shows today, overdue, starting soon and saved module states', async t => {
+  const d = fullFixture(), today = tokyoToday();
+  d.project.modules.flyer.startDate = addDays(today, 2); d.project.modules.flyer.dueDate = addDays(today, -1);
+  d.project.modules.publicity.status = 'in-progress'; d.project.modules.publicity.data.items.push({ id: 'today-post', title: '今日の告知', channel: 'SNS', date: today, text: '', materials: '', status: 'draft' });
+  const page = await setup(t, { saved: d, width: 375 }); await page.goto(origin + prefix + 'dashboard.html');
+  const content = await page.getByTestId('schedule').innerText();
+  assert.ok(content.includes('今日の告知')); assert.ok(content.includes('期限超過')); assert.ok(content.includes('そろそろ開始')); assert.ok(content.includes('進行中'));
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole('link', { name: 'チラシを開く', exact: true }).click(); await page.waitForURL('**/modules/flyer/index.html?projectId=*');
+});
+test('MVP-09: incompatible old module data is retained unless replacement is confirmed', async t => {
+  const d = fixture(); d.project.modules.flyer = { id: 'flyer', status: 'on-hold', startDate: null, dueDate: null, progress: 0, alerts: [], data: { text: '旧形式' } };
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'modules/flyer/index.html');
+  const before = await stored(page); assert.ok((await page.locator('#main').innerText()).includes('編集形式と異なります'));
+  page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: 'このモジュールの編集形式に切り替える', exact: true }).click(); assert.equal(await stored(page), before);
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: 'このモジュールの編集形式に切り替える', exact: true }).click();
+  assert.equal(JSON.parse(await stored(page)).project.modules.flyer.data.version, 1);
+  assert.equal(JSON.parse(await stored(page)).project.modules.flyer.status, 'on-hold');
+});
+
+test('MVP-01/09: iPhone sample button loads all five modules after confirmation', async t => {
+  const page = await setup(t, { width: 375 }); await page.goto(origin + master);
+  assert.equal(await stored(page), null);
+  const cancel = page.waitForEvent('dialog');
+  await page.getByRole('button', { name: 'サンプル公演を試す', exact: true }).click();
+  await (await cancel).dismiss();
+  await page.getByLabel('公演タイトル（必須）', { exact: true }).waitFor(); assert.equal(await stored(page), null);
+  const accept = page.waitForEvent('dialog');
+  await page.getByRole('button', { name: 'サンプル公演を試す', exact: true }).click();
+  await (await accept).accept();
+  await waitForText(page.getByRole('status'), 'JSONを取り込み');
+  const d = JSON.parse(await stored(page)); assert.equal(Object.keys(d.project.modules).length, 5);
+  await page.getByRole('link', { name: 'ダッシュボード', exact: true }).click(); await page.waitForURL('**/dashboard.html?projectId=*');
+  assert.ok((await page.getByTestId('schedule').innerText()).includes('55枚'));
+});
+
+test('MVP-08/09: missing linked work can be repaired without leaving the module page', async t => {
+  const d = fullFixture();
+  d.project.modules.publicity.data.items.push({ id: 'linked-post', title: '関連投稿', channel: 'SNS', date: null, text: '', materials: '', status: 'draft' });
+  d.project.calendarEvents.push({ dataVersion: 1, id: 'linked-event', projectId: d.project.id, moduleId: 'publicity', title: '関連予定', date: tokyoToday(), type: 'manual', status: 'planned', relatedItemId: 'linked-post' });
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'modules/publicity/index.html'); const saved = await stored(page);
+  await page.getByRole('button', { name: '投稿1を削除', exact: true }).click(); assert.equal(await stored(page), saved);
+  assert.ok((await page.getByTestId('validation-errors').innerText()).includes('関連する作業'));
+  await page.getByRole('button', { name: '予定1を削除', exact: true }).click();
+  const next = JSON.parse(await stored(page)); assert.equal(next.project.calendarEvents.length, 0); assert.equal(next.project.modules.publicity.data.items.length, 0);
+});
+test('MVP-08: legacy unknown modules produce no false links and malformed hashes do not crash', async t => {
+  const d = fullFixture(); d.project.calendarEvents.push({ id: 'old', projectId: d.project.id, moduleId: '__proto__', title: '未対応予定', date: tokyoToday(), type: 'future', status: 'planned', relatedItemId: null });
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'calendar.html#item-%');
+  assert.ok((await page.locator('#main').innerText()).includes('未対応モジュール'));
+  assert.equal(await page.locator('a[href*="__proto__"]').count(), 0);
 });
