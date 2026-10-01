@@ -153,6 +153,58 @@
             }
           ]
         }
+      },
+      "rehearsal": {
+        "id": "rehearsal",
+        "status": "in-progress",
+        "startDate": "2026-10-01",
+        "dueDate": "2026-11-29",
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-rehearsal",
+              "name": "読み合わせ",
+              "date": "2026-10-10",
+              "startTime": "13:00",
+              "endTime": "17:00",
+              "venue": "架空稽古室",
+              "participants": "出演A・出演B",
+              "attendance": "",
+              "staff": "演出担当",
+              "notes": "第一幕",
+              "message": "台本を持参",
+              "status": "planned",
+              "history": []
+            }
+          ]
+        }
+      },
+      "submissions": {
+        "id": "submissions",
+        "status": "not-started",
+        "startDate": "2026-11-01",
+        "dueDate": "2026-11-20",
+        "progress": 0,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-submission",
+              "name": "舞台図面",
+              "recipient": "架空劇場",
+              "category": "schedule",
+              "assignee": "舞台担当",
+              "dueDate": "2026-11-16",
+              "status": "pending",
+              "submittedDate": null,
+              "notes": "仕様確認後に提出"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [

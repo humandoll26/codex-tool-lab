@@ -3,6 +3,8 @@ import { editor as flyerEditor } from '../modules/flyer/editor.js';
 import { editor as distributionEditor } from '../modules/distribution/editor.js';
 import { editor as publicityEditor } from '../modules/publicity/editor.js';
 import { editor as ticketsEditor } from '../modules/tickets/editor.js';
+import { editor as rehearsalEditor } from '../modules/rehearsal/editor.js';
+import { editor as submissionsEditor } from '../modules/submissions/editor.js';
 import { DEFINITIONS } from './modules.js';
 import { calendarView, calendarOverview } from './calendar-view.js';
 import { dashboardView } from './dashboard-view.js';
@@ -14,7 +16,7 @@ const root = document.querySelector('#main');
 const isBudget = document.body.dataset.view === 'budget';
 const view = document.body.dataset.view;
 const isModule = Boolean(DEFINITIONS[view]);
-const editors = { flyer: flyerEditor, distribution: distributionEditor, publicity: publicityEditor, tickets: ticketsEditor };
+const editors = { flyer: flyerEditor, distribution: distributionEditor, publicity: publicityEditor, tickets: ticketsEditor, rehearsal: rehearsalEditor, submissions: submissionsEditor };
 const storage = { getItem: key => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: key => window.localStorage.removeItem(key) };
 const loaded = readDocument(storage);
@@ -248,7 +250,7 @@ function extraEditor(id) {
     download(producer(draft.project, moduleValue(id).data), filename, mime);
   };
   return editors[id]({ id, def, project: draft.project, data: module.data, getData: () => moduleValue(id).data,
-    el, field, button, mutate, fields, update, exportData, edit: action => editModule(id, m => action(m.data)) });
+    el, field, button, mutate, fields, update, notify, exportData, edit: action => editModule(id, m => action(m.data)) });
 }
 function metadata(id) {
   const m = id === 'budget' ? getBudget() : moduleValue(id), name = DEFINITIONS[id].name;
@@ -339,9 +341,9 @@ function render() {
   root.append(el('section', { className: 'card' }, el('h2', {}, '制作モジュール'),
     el('div', { className: 'toolbar' }, Object.entries(DEFINITIONS).map(([id, def]) => projectLink(def.name, `modules/${id}/index.html`)))));
   if (!isModule) {
-    const modules = [['稽古', '日程・連絡調整'], ['提出物', '劇場への提出管理']];
+    const modules = [['受付', '当日の受付準備'], ['決算', '公演の収支と記録']];
     root.append(el('section', { className: 'card' }, el('h2', {}, 'これからのモジュール'),
-      el('p', { className: 'hint' }, '予算・チラシ・配布・SNS・販売進捗を利用できます。以下は将来予定です。'),
+      el('p', { className: 'hint' }, '7つの制作モジュールを利用できます。以下は将来予定です。'),
       el('ul', { className: 'module-list' }, modules.map(([name, description]) => el('li', {}, el('strong', {}, name), el('p', { className: 'hint' }, `${description} · 将来予定`))))));
   }
   update(false);

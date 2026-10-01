@@ -9,6 +9,7 @@ export function collectionEditor(ctx, config) {
     const node = el('div', { className: 'row', id: `item-${row.id}` }, el('h3', {}, `${config.rowTitle}${i + 1}`));
     for (const spec of config.rowFields) node.append(field(`${config.rowTitle}${i + 1}の${spec.label}`, `${base}.items.${i}.${spec.key}`, row[spec.key], value => edit(d => d.items[i][spec.key] = spec.type === 'date' && !value ? null : value), spec));
     if (config.rowExport) node.append(button('この原稿を書き出す', () => ctx.exportData((p, d) => d.items[i].text, 'post.txt', 'text/plain')));
+    if (config.rowExtras) node.append(...config.rowExtras(row, i));
     node.append(button(`${config.rowTitle}${i + 1}を削除`, () => mutate(() => edit(d => d.items.splice(i, 1))), 'danger')); card.append(node);
   });
   card.append(button(config.addLabel, () => mutate(() => edit(d => d.items.push({ id: newId(id), ...config.newRow() })))));
