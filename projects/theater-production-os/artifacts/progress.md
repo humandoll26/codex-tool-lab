@@ -136,3 +136,10 @@
 - 稽古予定の変更履歴は明示操作で保存。同じ記録は重複せず、JSONで保持。完了・中止稽古と提出済み書類は期限超過から除外。
 - 再開時はREADME、docs/mvp-v0.3.md、2モジュールのSPEC/TASK、検証記録を確認。npm test／npm run test:browserで再現できる。
 - 次の候補は受付準備・決算。Google警告対応、実機Safari検証、販売用配布物とライセンスは残件。Notion原本は未変更。
+
+## MVP v0.3 — GitHub・配信完了
+
+- 実装コミット: 0a213c4601f7056792ced2fbf7775fa8d57f6b46。tool/theater-production-os/budget-mvpへのpush成功。
+- 配信コミット: 730628a58e325c6a14c5a18fc1e0ed6eafa4984e。gh-pagesへのpushとremote一致確認成功。
+- アプリ34ファイル＋.nojekyll。公開ツリーを読み出してローカルHTTPでサンプル導入と全10画面を起動。ソース一致、HTTPエラー・JavaScript例外0。
+- mainへのマージとPR作成は未実施。公開URLのHTTP応答・Google警告解除・実機iPhoneは未確認。
