@@ -5,7 +5,7 @@ export function eventList(ctx, events, empty = '予定はありません。') {
   const { el } = ctx;
   if (!events.length) return el('p', { className: 'hint' }, empty);
   return el('ul', { className: 'agenda-list' }, events.map(event => {
-    const label = `${event.date}${event.time ? ` ${event.time}` : ''} · ${event.title} · ${event.status === 'completed' ? '完了' : event.status === 'on-hold' ? '保留' : '予定'}`;
+    const label = `${event.date}${event.time ? ` ${event.time}` : ''} · ${event.title} · ${event.status === 'completed' ? '完了' : event.status === 'cancelled' ? '中止' : event.status === 'on-hold' ? '保留' : '予定'}`;
     const target = event.moduleId === 'project' ? 'index.html' : Object.hasOwn(DEFINITIONS, event.moduleId) ? `modules/${event.moduleId}/index.html` : null;
     return el('li', {}, target ? ctx.projectLink(label, target, event.relatedItemId ? `#item-${encodeURIComponent(event.relatedItemId)}` : '') : el('span', {}, `${label}（未対応モジュール）`));
   }));

@@ -1,7 +1,7 @@
 # モジュール一覧
 
 各モジュールはOSの子フォルダに置き、単体起動とOSからの起動の両方に対応する。
-予算・チラシ・配布・SNS・販売進捗を実装・検証済み。他は計画。
+予算・チラシ・配布・SNS・販売進捗・稽古・提出物を実装。他は計画。
 
 | ID | 役割 | 状態・予定 |
 | --- | --- | --- |
@@ -13,7 +13,7 @@
 | publicity | SNS・告知計画 | usable：OS MVP v0.2 |
 | tickets | ステージ別販売進捗 | usable：OS MVP v0.2 |
 | program | パンフ原稿・校正 | planned |
-| rehearsal | 稽古・連絡調整 | planned：原本優先度高 |
+| rehearsal | 稽古・連絡調整 | usable：OS MVP v0.3 |
 | stage-operations | 建込・仕込み・タイムスケジュール | planned：既存ツール接続候補 |
 | front-desk | 受付準備 | planned |
 | show-day | 受付・物販・当日運営 | planned |
@@ -21,7 +21,7 @@
 | contracts | 契約・支払い | planned：拡張 |
 | funding | 助成金・協賛・広告 | planned：拡張 |
 | travel | 交通・宿泊・ケータリング | planned：拡張 |
-| submissions | 申請・劇場提出物 | planned：原本優先度高 |
+| submissions | 申請・劇場提出物 | usable：OS MVP v0.3 |
 | performance-archive | 公演資料・実績・引継ぎ | planned：拡張 |
 
 公演マスター、カレンダー、ダッシュボードはOS側の機能。

@@ -238,7 +238,7 @@ test('unknown projectId never edits another project', async t => {
 
 function fullFixture() {
   const d = fixture();
-  for (const id of ['flyer', 'distribution', 'publicity', 'tickets']) d.project.modules[id] = {
+  for (const id of ['flyer', 'distribution', 'publicity', 'tickets', 'rehearsal', 'submissions']) d.project.modules[id] = {
     id, status: 'not-started', startDate: null, dueDate: null, progress: 0, alerts: [], data: DEFINITIONS[id].defaults() };
   return d;
 }
@@ -343,7 +343,7 @@ test('MVP-09: incompatible old module data is retained unless replacement is con
   assert.equal(JSON.parse(await stored(page)).project.modules.flyer.status, 'on-hold');
 });
 
-test('MVP-01/09: iPhone sample button loads all five modules after confirmation', async t => {
+test('MVP-01/09: iPhone sample button loads all seven modules after confirmation', async t => {
   const page = await setup(t, { width: 375 }); await page.goto(origin + master);
   assert.equal(await stored(page), null);
   const cancel = page.waitForEvent('dialog');
@@ -354,7 +354,7 @@ test('MVP-01/09: iPhone sample button loads all five modules after confirmation'
   await page.getByRole('button', { name: 'サンプル公演を試す', exact: true }).click();
   await (await accept).accept();
   await waitForText(page.getByRole('status'), 'JSONを取り込み');
-  const d = JSON.parse(await stored(page)); assert.equal(Object.keys(d.project.modules).length, 5);
+  const d = JSON.parse(await stored(page)); assert.equal(Object.keys(d.project.modules).length, 7);
   await page.getByRole('link', { name: 'ダッシュボード', exact: true }).click(); await page.waitForURL('**/dashboard.html?projectId=*');
   assert.ok((await page.getByTestId('schedule').innerText()).includes('55枚'));
 });
@@ -385,6 +385,8 @@ test('local security checks: all entrances keep hostile text inert, make no exte
   d.project.modules.publicity.data.items.push({ id: 'audit-post', title: payload, channel: 'SNS', date: tokyoToday(), text: payload, materials: '', status: 'draft' });
   d.project.modules.distribution.data.printed = 1;
   d.project.modules.distribution.data.items.push({ id: 'audit-distribution', name: payload, assignee: '', method: 'hand', date: null, planned: 1, shipped: 0, status: 'uncontacted' });
+  d.project.modules.rehearsal.data.items.push({ id: 'audit-rehearsal', name: payload, date: tokyoToday(), startTime: '13:00', endTime: '17:00', venue: payload, participants: '', attendance: '', staff: '', notes: '', message: payload, status: 'planned', history: [] });
+  d.project.modules.submissions.data.items.push({ id: 'audit-submission', name: payload, recipient: payload, category: 'theater', assignee: '', dueDate: tokyoToday(), status: 'pending', submittedDate: null, notes: payload });
   const page = await setup(t, { saved: d });
   const externalRequests = [], outgoingRequests = [];
   let downloadCount = 0;
@@ -407,7 +409,9 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['flyer', '掲載情報を書き出す', 'flyer.txt'],
     ['distribution', '配布CSVを書き出す', 'distribution.csv'],
     ['publicity', '投稿計画CSVを書き出す', 'publicity.csv'],
-    ['tickets', '販売CSVを書き出す', 'tickets.csv']
+    ['tickets', '販売CSVを書き出す', 'tickets.csv'],
+    ['rehearsal', '全体連絡文を書き出す', 'rehearsal.txt'],
+    ['submissions', '提出物CSVを書き出す', 'submissions.csv']
   ]) {
     await page.goto(origin + prefix + `modules/${id}/index.html`);
     const waiting = page.waitForEvent('download');
@@ -416,7 +420,63 @@ test('local security checks: all entrances keep hostile text inert, make no exte
   }
   const exported = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click()));
   assert.equal(exported.project.title, payload);
-  assert.equal(downloadCount, 5, 'only explicit export actions download files');
+  assert.equal(downloadCount, 7, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
+});
+
+test('NEXT-01/02/03/05/06: rehearsal mobile editing, snapshot history, output and calendar row link', async t => {
+  const page = await setup(t, { saved: fullFixture(), width: 375 });
+  await page.goto(origin + prefix + 'modules/rehearsal/index.html');
+  await page.getByRole('button', { name: '稽古を追加', exact: true }).click();
+  await page.getByLabel('稽古1の名称', { exact: true }).fill('読み合わせ');
+  await page.getByLabel('稽古1の日付', { exact: true }).fill(tokyoToday());
+  await page.getByLabel('稽古1の稽古場', { exact: true }).fill('稽古室');
+  await page.getByLabel('稽古1の連絡事項', { exact: true }).fill('台本持参');
+  const saved = await stored(page);
+  await page.getByLabel('稽古1の終了時刻', { exact: true }).fill('12:00');
+  assert.equal(await stored(page), saved);
+  assert.equal(await page.getByLabel('稽古1の終了時刻', { exact: true }).getAttribute('aria-invalid'), 'true');
+  await page.getByRole('button', { name: '稽古1の予定変更を記録', exact: true }).click();
+  assert.ok((await page.getByRole('status').innerText()).includes('修正'));
+  await page.getByLabel('稽古1の終了時刻', { exact: true }).fill('17:00');
+  await page.getByRole('button', { name: '稽古1の予定変更を記録', exact: true }).click();
+  await page.getByRole('button', { name: '稽古1の予定変更を記録', exact: true }).click();
+  assert.equal(JSON.parse(await stored(page)).project.modules.rehearsal.data.items[0].history.length, 1);
+  await page.getByLabel('稽古1の稽古場', { exact: true }).fill('別室');
+  await page.getByRole('button', { name: '稽古1の予定変更を記録', exact: true }).click();
+  const out = await downloadJSON(page, () => page.getByRole('button', { name: '全体連絡文を書き出す', exact: true }).click());
+  assert.ok(out.includes('架空公演')); assert.ok(out.includes('13:00〜17:00')); assert.ok(out.includes('別室')); assert.ok(out.includes('台本持参'));
+  await page.reload(); assert.equal(await page.getByLabel('稽古1の変更履歴', { exact: true }).locator('li').count(), 2);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.getByRole('link', { name: 'カレンダー', exact: true }).click(); await page.waitForURL('**/calendar.html?projectId=*');
+  await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today');
+  await page.getByRole('link', { name: /13:00 · 稽古：読み合わせ/ }).click(); await page.waitForURL('**/modules/rehearsal/index.html?projectId=*#item-*');
+  assert.equal(await page.getByLabel('稽古1の稽古場', { exact: true }).inputValue(), '別室');
+});
+
+test('NEXT-01/04/05/06: submission date protection, returned work, calendar link and saved resubmission', async t => {
+  const page = await setup(t, { saved: fullFixture(), width: 375 });
+  await page.goto(origin + prefix + 'modules/submissions/index.html');
+  await page.getByRole('button', { name: '提出物を追加', exact: true }).click();
+  await page.getByLabel('提出物1の名称', { exact: true }).fill('舞台図面');
+  await page.getByLabel('提出物1の期限', { exact: true }).fill(tokyoToday());
+  await page.getByLabel('提出物1の提出先', { exact: true }).fill('架空劇場');
+  const saved = await stored(page);
+  await page.getByLabel('提出物1の状態', { exact: true }).selectOption('submitted');
+  assert.equal(await stored(page), saved);
+  assert.equal(await page.getByLabel('提出物1の提出日', { exact: true }).getAttribute('aria-invalid'), 'true');
+  await page.getByLabel('提出物1の提出日', { exact: true }).fill(tokyoToday());
+  assert.ok((await text(page)).includes('0件'));
+  await page.getByLabel('提出物1の状態', { exact: true }).selectOption('returned');
+  await page.getByRole('link', { name: 'カレンダー', exact: true }).click(); await page.waitForURL('**/calendar.html?projectId=*');
+  await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today');
+  await page.getByRole('link', { name: /提出：舞台図面 · 予定/ }).click(); await page.waitForURL('**/modules/submissions/index.html?projectId=*#item-*');
+  assert.equal(await page.getByLabel('提出物1の状態', { exact: true }).inputValue(), 'returned');
+  await page.getByLabel('提出物1の状態', { exact: true }).selectOption('submitted');
+  const out = await downloadJSON(page, () => page.getByRole('button', { name: '提出物CSVを書き出す', exact: true }).click());
+  assert.ok(out.includes('舞台図面')); assert.ok(out.includes('submitted'));
+  await page.reload(); assert.equal(await page.getByLabel('提出物1の状態', { exact: true }).inputValue(), 'submitted');
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const d=JSON.parse(await stored(page)); assert.equal(d.project.modules.budget.data.plannedSales[0].quantity,80);
 });

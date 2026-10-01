@@ -1,6 +1,6 @@
 # 劇団制作OS — 設計の入口
 
-- 状態: **OS MVP v0.2実装済み（5モジュール・カレンダー・ダッシュボード、PR採用前）**
+- 状態: **OS MVP v0.3実装済み（7モジュール・カレンダー・ダッシュボード、PR採用前）**
 - プロジェクトID: `theater-production-os`
 - OS入口: `index.html`
 - 予算の単体入口: `modules/budget/index.html`
@@ -23,3 +23,5 @@
 起動・テストはREADME、実測は検証記録、再開時の状況は [作業記録](artifacts/progress.md) を参照。
 [追加MVP仕様](docs/mvp-next.md)に基づき、チラシ・配布・SNS・販売進捗・カレンダー・逆算予定・ダッシュボードを実装。
 次はiPhone実機確認と、稽古・提出物等の後続モジュール。
+
+- [稽古・提出物の追加仕様](docs/mvp-v0.3.md)

@@ -85,6 +85,10 @@ export function eventsFor(project) {
       title: id === 'distribution' ? `配布：${row.name}` : `投稿：${row.title}`, date: row.date,
       status: (id === 'distribution' ? row.shipped >= row.planned && row.planned > 0 : row.status === 'published') ? 'completed' : status,
       relatedItemId: row.id, type: 'task' });
+    if (id === 'rehearsal') for (const row of data.items) add({ id: `${id}-${row.id}`, moduleId: id, title: `稽古：${row.name}`, date: row.date, time: row.startTime,
+      status: row.status === 'cancelled' ? 'cancelled' : row.status === 'completed' ? 'completed' : status, relatedItemId: row.id, type: 'task' });
+    if (id === 'submissions') for (const row of data.items) add({ id: `${id}-${row.id}`, moduleId: id, title: `提出：${row.name}`, date: row.dueDate,
+      status: row.status === 'submitted' ? 'completed' : status, relatedItemId: row.id, type: 'task' });
   }
   project.calendarEvents.forEach((e, i) => {
     if (isRecord(e) && e.projectId === project.id && typeof e.title === 'string' && typeof e.moduleId === 'string' && validDate(e.date)) add({ ...e, id: e.id ?? `legacy-${i}`, legacy: e.dataVersion !== 1 });
@@ -93,7 +97,7 @@ export function eventsFor(project) {
 }
 export function agenda(project, today = tokyoToday()) {
   const events = eventsFor(project), week = weekRange(today);
-  const pending = events.filter(e => e.status !== 'completed' && !['completed', 'not-needed'].includes(project.modules[e.moduleId]?.status));
+  const pending = events.filter(e => !['completed', 'cancelled'].includes(e.status) && !['completed', 'not-needed'].includes(project.modules[e.moduleId]?.status));
   return { events, today: events.filter(e => e.date === today), week: events.filter(e => e.date >= week.start && e.date <= week.end),
     overdue: pending.filter(e => e.date < today && e.type !== 'performance'),
     soon: Object.keys(DEFINITIONS).filter(id => {

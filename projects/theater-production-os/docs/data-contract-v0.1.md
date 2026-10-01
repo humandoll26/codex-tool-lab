@@ -112,3 +112,11 @@ JSON往復で安定ID、未実装モジュール、未使用の拡張フィー�
 後続のカレンダー実装で終日・時刻付き・範囲・重複生成防止・変更通知の詳細を決める。
 日付だけの予定はYYYY-MM-DDとして扱い、UTC変換で前日になることを避ける。
 type、statusの列挙や予定の置換ルールは未確定。初回は空配列を維持し、仮実装を入れない。
+
+## MVP v0.3の追加データ
+
+rehearsalとsubmissionsはmodules.<id>.data.version:1、itemsに安定ID付きの行を保持する。[追加MVP仕様](mvp-v0.3.md)と各モジュールmodel.jsが項目と妥当性を定義する。
+
+稽古の履歴は各行のhistory配列。date、startTime、endTime、venue、recordedAt（UTC ISO時刻）を明示記録する。稽古日と開始／終了は日本時間の同日。提出物はdueDateと任意submittedDateをYYYY-MM-DDで保持し、submitted状態にはsubmittedDate必須。
+
+既存のschemaVersion 1・保存キー・逆算6予定は維持。旧未実装形式はJSONで保持し、ユーザーの確認なしに置換しない。表示用の稽古／提出期限予定は都度生成し、calendarEventsへ重複保存しない。
