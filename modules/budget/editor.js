@@ -1,6 +1,7 @@
 import { newId, STATUSES, STATUS_LABELS } from '../../shared/model.js';
+import { report, exportCSV } from './outputs.js';
 
-export function createBudgetEditor({ document, el, field, button, mutate, getBudget, editBudget, paths, yen, fields, update }) {
+export function createBudgetEditor({ document, el, field, button, mutate, getBudget, editBudget, paths, yen, fields, update, exportData }) {
   const p = document.project, b = getBudget();
   const card = el('section', { className: 'card', 'aria-label': '予算の入力' }, el('h2', {}, '予算の入力'));
   card.append(el('p', { className: 'hint' }, 'ここで入力する枚数は想定販売です。実績販売・予約者情報は扱いません。金額は税込総額の円です。'));
@@ -55,5 +56,8 @@ export function createBudgetEditor({ document, el, field, button, mutate, getBud
     v => editBudget(m => m.data.referencePriceCategoryId = v),
     { options: p.ticket.priceCategories.map(c => ({ value: c.id, label: `${c.name} · ${yen(typeof c.price === 'number' ? c.price : 0)}` })) }));
   card.append(el('p', { className: 'hint' }, '全員がこの基準料金で購入する場合の参考人数です。複数料金の販売構成では実際の損益分岐が変わります。販売予測ではありません。'));
+  card.append(el('div', { className: 'toolbar' },
+    button('予算テキストを書き出す', () => exportData(report, 'budget.txt', 'text/plain')),
+    button('予算CSVを書き出す', () => exportData(exportCSV, 'budget.csv', 'text/csv'))));
   return card;
 }

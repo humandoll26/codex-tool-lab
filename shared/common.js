@@ -32,7 +32,7 @@ export function safeSum(values) {
 export function csv(rows) {
   const cell = value => {
     let text = String(value ?? '');
-    if (/^[\s]*[=+\-@]/.test(text) || /^[\t\r\n]/.test(text)) text = `'${text}`;
+    if (typeof value === 'string' && (/^[\s]*[=+\-@]/.test(text) || /^[\t\r\n]/.test(text))) text = `'${text}`;
     return `"${text.replaceAll('"', '""')}"`;
   };
   return '\uFEFF' + rows.map(row => row.map(cell).join(',')).join('\r\n') + '\r\n';

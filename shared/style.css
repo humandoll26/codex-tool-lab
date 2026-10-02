@@ -1,7 +1,7 @@
 :root { color-scheme: light; font-family: system-ui, -apple-system, "Noto Sans JP", sans-serif; color: #182b32; background: #f3f4ee; --accent: #165c50; --muted: #5c6b69; --line: #d7dfd8; }
 * { box-sizing: border-box; }
 body { margin: 0; line-height: 1.6; }
-.shell { max-width: 1100px; margin: auto; padding: 24px; }
+.shell { overflow-wrap: anywhere; max-width: 1100px; margin: auto; padding: 24px; }
 .site-header { color: #fff; background: #163d36; border-bottom: 5px solid #d3ac65; }
 .site-header h1 { font-size: clamp(1.8rem, 4vw, 2.8rem); margin: 10px 0; letter-spacing: .025em; }
 .site-header p { margin: 5px 0; }
@@ -62,3 +62,7 @@ footer { color: var(--muted); font-size: .85rem; }
 @media (max-width: 640px) { .module-cards { grid-template-columns: 1fr; } .calendar-day, .calendar-empty { padding: 3px; min-height: 60px; } .calendar-day a { font-size: .65rem; padding: 2px; } }
 @media (max-width: 640px) { .shell { padding: 16px; } .card { padding: 18px; } .grid, .row-fields { grid-template-columns: 1fr; } .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .module-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } .toolbar > button, .toolbar > a { flex: 1 1 auto; text-align: center; } }
 @media (prefers-reduced-motion: no-preference) { button, a { transition: filter .15s ease; } }
+.calendar-day .day-select { width: 100%; padding: 0; min-height: 44px; color: inherit; background: transparent; border: 0; font-weight: 700; }
+.calendar-day.selected { outline: 2px solid #d49e39; outline-offset: -2px; }
+.day-count { display: block; text-align: center; font-size: .7rem; color: var(--muted); }
+@media (max-width: 640px) { .calendar-day a, .calendar-day > span:not(.day-count) { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; } }
