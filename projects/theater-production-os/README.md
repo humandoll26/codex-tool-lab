@@ -14,7 +14,7 @@
 - [保存の競合検知の仕様](docs/mvp-v0.10.md)
 - [モジュール単位のJSON仕様](docs/mvp-v0.11.md)
 - [統合仕様の取得版](docs/specs/theater-production-os-spec-v0.1.md) / [共通データ契約](docs/data-contract-v0.1.md)
-- [検証結果](artifacts/verification.md) / [作業・再開記録](artifacts/progress.md)
+- [検証結果](artifacts/verification.md) / [作業履歴](artifacts/progress.md) / [現在地と再開手順](artifacts/handoff.md)
 
 ## 起動
 
