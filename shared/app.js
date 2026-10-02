@@ -18,6 +18,7 @@ import { DEFINITIONS } from './modules.js';
 import { calendarView, calendarOverview } from './calendar-view.js';
 import { dashboardView } from './dashboard-view.js';
 import { tokyoToday } from './schedule.js';
+import { moduleBackup, mergeModuleBackup } from './module-backup.js';
 import { newDocument, newId, emptyBudget, STATUSES, STATUS_LABELS, validateDocument,
   calculateBudget, parseDocument, prepareDocument, readDocument, writeDocument, removeDocument, STORAGE_KEY } from './model.js';
 
@@ -149,6 +150,22 @@ function textPreview(source, title) {
 function exportJSON() {
   try { download(JSON.stringify(prepareDocument(draft), null, 2), `theater-production-${draft.project.id}.json`); }
   catch { notify('入力エラーを修正してからJSONを書き出してください。', 'error'); }
+}
+function exportModuleJSON() {
+  if (corrupt) return;
+  try { download(moduleBackup(draft, view), `theater-production-${view}.json`); }
+  catch (error) { notify(`モジュールを書き出せませんでした。${error.message}`, 'error'); }
+}
+async function importModuleJSON(file) {
+  if (!file || !isModule || corrupt) return;
+  let next;
+  try { next = mergeModuleBackup(draft, await file.text(), view); }
+  catch (error) { notify(`モジュールを取り込めませんでした。現在のデータは変更していません。\n${error.message}`, 'error'); return; }
+  if (!confirm(`「${next.sourceTitle}」の${DEFINITIONS[view].name}を取り込み、このモジュールの入力と手動・逆算予定を置き換えますか？公演情報・他のモジュールは保持し、現在の料金と席数で集計します。`)) return;
+  const result = writeDocument(storage, next.document, storageOptions()); savedResult(result);
+  if (result.conflict) { notify(result.error, 'warning'); return; }
+  draft = result.document; touched = true;
+  notify(result.ok ? 'このモジュールのJSONを取り込み、保存しました。' : result.error, result.ok ? '' : 'warning'); render();
 }
 async function importJSON(file) {
   if (!file) return;
@@ -393,11 +410,17 @@ function render() {
     return;
   }
   exportButton = button('JSONを書き出す', exportJSON);
-  const input = el('input', { type: 'file', accept: '.json,application/json', hidden: '' });
+  const input = el('input', { type: 'file', 'data-import': 'project', accept: '.json,application/json', hidden: '' });
   input.addEventListener('change', () => { const file = input.files[0]; input.value = ''; importJSON(file); });
   const toolbar = el('div', { className: 'toolbar' }, exportButton, button('JSONを取り込む', () => input.click()), button('サンプル公演を試す', loadSample),
     button('全データを消去', reset, 'danger'), input);
   root.append(toolbar);
+  if (isModule && !corrupt) {
+    const moduleInput = el('input', { type: 'file', 'data-import': 'module', accept: '.json,application/json', hidden: '' });
+    moduleInput.addEventListener('change', () => { const file = moduleInput.files[0]; moduleInput.value = ''; importModuleJSON(file); });
+    root.append(el('div', { className: 'toolbar' }, button('このモジュールのJSONを書き出す', exportModuleJSON), button('このモジュールのJSONを取り込む', () => moduleInput.click()), moduleInput),
+      el('p', { className: 'hint' }, 'モジュール専用JSONは同じ公演IDで使います。共通公演情報も含むため、共有前に内容を確認してください。全体のバックアップは「JSONを書き出す」を使ってください。'));
+  }
   if (corrupt) {
     exportButton.disabled = true;
     backupButton = button('破損データをそのまま書き出す', () => download(loaded.raw, 'theater-production-recovery.json'));
