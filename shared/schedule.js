@@ -86,7 +86,7 @@ export function eventsFor(project) {
       title: id === 'distribution' ? `配布：${row.name}` : `投稿：${row.title}`, date: row.date,
       status: (id === 'distribution' ? row.shipped >= row.planned && row.planned > 0 : row.status === 'published') ? 'completed' : status,
       relatedItemId: row.id, type: 'task' });
-    if (id === 'rehearsal') for (const row of data.items) add({ id: `${id}-${row.id}`, moduleId: id, title: `稽古：${row.name}`, date: row.date, time: row.startTime,
+    if (id === 'rehearsal') for (const row of data.items) add({ id: `${id}-${row.id}`, moduleId: id, title: `稽古：${row.name}`, date: row.date, time: row.startTime, endTime: row.endTime, location: row.venue,
       status: row.status === 'cancelled' ? 'cancelled' : row.status === 'completed' ? 'completed' : status, relatedItemId: row.id, type: 'task' });
     if (id === 'submissions') for (const row of data.items) add({ id: `${id}-${row.id}`, moduleId: id, title: `提出：${row.name}`, date: row.dueDate,
       status: row.status === 'submitted' ? 'completed' : status, relatedItemId: row.id, type: 'task' });

@@ -4,6 +4,6 @@ export function validate(d,base){const c=checker(base);c.rows(d.items,'items').f
 export const ordered=d=>[...d.items].sort((a,b)=>a.date.localeCompare(b.date)||a.startTime.localeCompare(b.startTime)||a.name.localeCompare(b.name));
 export const warnings=(p,d)=>{const result=[];for(let i=0;i<d.items.length;i++)for(let n=i+1;n<d.items.length;n++){const a=d.items[i],b=d.items[n];if(a.status!=='cancelled'&&b.status!=='cancelled'&&a.date===b.date&&a.department===b.department&&a.place===b.place&&a.startTime<b.endTime&&b.startTime<a.endTime)result.push(`時間重複：${a.name} / ${b.name}（${a.department}・${a.place||'場所未定'}）`);}return result;};
 export const metrics=(p,d)=>[['作業',`${d.items.length}件`],['未完了',`${d.items.filter(r=>r.status==='planned').length}件`],['重複注意',`${warnings(p,d).length}件`]];
-export const events=(p,d)=>d.items.map(r=>({title:`舞台：${r.name}`,date:r.date,time:r.startTime,status:r.status,relatedItemId:r.id}));
+export const events=(p,d)=>d.items.map(r=>({title:`舞台：${r.name}`,date:r.date,time:r.startTime,endTime:r.endTime,location:r.place,status:r.status,relatedItemId:r.id}));
 export const timeline=(p,d)=>[p.title,...ordered(d).map(r=>`${r.date} ${r.startTime}〜${r.endTime}（日本時間） ${r.name} · ${r.department} · ${r.place||'場所未定'} · ${r.people}人 · ${r.assignee||'担当未定'} · ${r.status}${r.notes?'\n'+r.notes:''}`)].join('\n\n');
 export const exportCSV=(p,d)=>csv([['作業','日付','開始（日本時間）','終了','部署','場所','必要人数','担当役割','状態','メモ'],...ordered(d).map(r=>[r.name,r.date,r.startTime,r.endTime,r.department,r.place,r.people,r.assignee,r.status,r.notes])]);
