@@ -39,3 +39,5 @@
 - [MVP v0.9 — 公演アーカイブ・引継ぎ](docs/mvp-v0.9.md)
 
 - [MVP v0.10 — 保存の競合検知](docs/mvp-v0.10.md)
+
+- [MVP v0.11 — モジュール単位のJSON](docs/mvp-v0.11.md)

@@ -8,6 +8,7 @@ import { chromium } from 'playwright';
 import { fixture } from '../fixture.js';
 import { STORAGE_KEY } from '../../shared/model.js';
 import { DEFINITIONS } from '../../shared/modules.js';
+import { moduleBackup } from '../../shared/module-backup.js';
 import { generateTemplate, tokyoToday, addDays } from '../../shared/schedule.js';
 
 const projectRoot = fileURLToPath(new URL('../../', import.meta.url));
@@ -62,7 +63,7 @@ async function downloadJSON(page, trigger) {
   return readFile(await download.path(), 'utf8');
 }
 async function upload(page, value) {
-  await page.locator('input[type=file]').setInputFiles({ name: 'sample.json', mimeType: 'application/json',
+  await page.locator('input[data-import=project]').setInputFiles({ name: 'sample.json', mimeType: 'application/json',
     buffer: Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)) });
 }
 async function text(page) { return page.locator('[aria-label="試算結果"]').innerText(); }
@@ -439,7 +440,12 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     const file = await waiting; assert.equal(file.suggestedFilename(), filename);
     const output = await readFile(await file.path(), 'utf8'); assert.ok(output.includes('<img'));
   }
-  assert.equal(downloadCount, 20, 'only explicit export actions download files');
+  for (const id of Object.keys(DEFINITIONS)) {
+    await page.goto(origin + prefix + `modules/${id}/index.html`);
+    const packet = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'このモジュールのJSONを書き出す', exact: true }).click()));
+    assert.deepEqual(Object.keys(packet.document.project.modules), [id]); assert.equal(packet.document.project.documents.length, 0);
+  }
+  assert.equal(downloadCount, 35, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -710,4 +716,31 @@ test('SAVE-03/04: copy success does not clear a storage failure, but a later suc
   await page.getByRole('button', { name: '原稿をコピー', exact: true }).click(); await waitForText(page.getByRole('status'), '原稿をコピーしました'); const currentURL = page.url(); await page.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); assert.equal(page.url(), currentURL);
   await page.evaluate(() => window.restoreStorageForTest()); await page.getByLabel('来場者1人当たりの変動費（円）', { exact: true }).fill('600'); assert.equal(JSON.parse(await stored(page)).project.modules.budget.data.variableCostPerAttendee, 600);
   await page.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); await page.waitForURL('**/index.html?projectId=*');
+});
+
+async function uploadModule(page, source) {
+  await page.locator('input[data-import=module]').setInputFiles({ name: 'module.json', mimeType: 'application/json', buffer: Buffer.from(source) });
+}
+test('PACK-01/02/03: module-only export and confirmed import retain current master, other work and assets', async t => {
+  const original = JSON.parse(await readFile(path.join(projectRoot, 'samples/demo.json'), 'utf8')), current = structuredClone(original);
+  original.project.modules.flyer.data.introduction = '共有された原稿'; current.project.title = '現在の公演表記'; current.project.venue.name = '現在の会場'; current.project.ticket.priceCategories[0].price = 4000; current.project.documents.push({ legacyAsset: true });
+  const page = await setup(t, { saved: current, width: 375 }); await page.goto(origin + prefix + 'modules/flyer/index.html'); const saved = await stored(page);
+  const source = moduleBackup(original, 'flyer'); page.once('dialog', dialog => dialog.dismiss()); await uploadModule(page, source); assert.equal(await stored(page), saved); assert.equal(await page.getByLabel('公演紹介文', { exact: true }).inputValue(), current.project.modules.flyer.data.introduction);
+  page.once('dialog', dialog => dialog.accept()); await uploadModule(page, source); await waitForText(page.getByRole('status'), 'このモジュールのJSONを取り込み、保存しました'); const updated = JSON.parse(await stored(page)); assert.equal(updated.project.modules.flyer.data.introduction, '共有された原稿'); assert.equal(updated.project.title, '現在の公演表記'); assert.equal(updated.project.venue.name, '現在の会場'); assert.equal(updated.project.ticket.priceCategories[0].price, 4000); assert.deepEqual(updated.project.modules.budget, current.project.modules.budget); assert.deepEqual(updated.project.documents, current.project.documents);
+  const packet = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'このモジュールのJSONを書き出す', exact: true }).click())); assert.deepEqual(Object.keys(packet.document.project.modules), ['flyer']); assert.equal(packet.document.project.documents.length, 0); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+test('PACK-02/03: wrong module/project/full format and current reference mismatch leave saved module untouched', async t => {
+  const d = fullFixture(); d.project.modules.budget.data.plannedSales = []; d.project.performanceDates[0].capacity = 10;
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'modules/tickets/index.html'); const saved = await stored(page);
+  const source = JSON.parse(await readFile(path.join(projectRoot, 'samples/demo.json'), 'utf8'));
+  await uploadModule(page, moduleBackup(source, 'flyer')); await waitForText(page.getByRole('status'), '別のモジュール'); assert.equal(await stored(page), saved);
+  await uploadModule(page, JSON.stringify(source)); await waitForText(page.getByRole('status'), '専用JSON'); assert.equal(await stored(page), saved);
+  const other = structuredClone(source); other.project.id = 'other-project'; other.project.calendarEvents = []; await uploadModule(page, moduleBackup(other, 'tickets')); await waitForText(page.getByRole('status'), '公演IDが一致しません'); assert.equal(await stored(page), saved);
+  await uploadModule(page, moduleBackup(source, 'tickets')); await waitForText(page.getByRole('status'), '販売可能席数'); assert.equal(await stored(page), saved);
+});
+test('PACK-03: missing or invalid modules cannot export; quota and conflict preserve recoverable data', async t => {
+  const empty = await setup(t, { saved: fixture() }); await empty.goto(origin + prefix + 'modules/flyer/index.html'); const original = await stored(empty); let downloads = 0; empty.on('download', () => downloads++); await empty.getByRole('button', { name: 'このモジュールのJSONを書き出す', exact: true }).click(); assert.ok((await empty.getByRole('status').innerText()).includes('未入力')); assert.equal(downloads, 0); assert.equal(await stored(empty), original);
+  const source = fullFixture(); source.project.modules.flyer.data.introduction = '取込後の未保存原稿'; const packet = moduleBackup(source, 'flyer');
+  const quota = await setup(t, { saved: fullFixture(), failure: 'quota' }); await quota.goto(origin + prefix + 'modules/flyer/index.html'); const quotaSaved = await stored(quota); quota.once('dialog', dialog => dialog.accept()); await uploadModule(quota, packet); await waitForText(quota.getByRole('status'), '保存できません'); assert.equal(await stored(quota), quotaSaved); const backup = JSON.parse(await downloadJSON(quota, () => quota.getByRole('button', { name: 'JSONを書き出す', exact: true }).click())); assert.equal(backup.project.modules.flyer.data.introduction, '取込後の未保存原稿');
+  const conflict = await setup(t, { saved: fullFixture() }); await conflict.goto(origin + prefix + 'modules/flyer/index.html'); await conflict.evaluate(key => { const d = JSON.parse(localStorage.getItem(key)); d.project.companyName = '別保存'; localStorage.setItem(key, JSON.stringify(d)); }, STORAGE_KEY); const latest = await stored(conflict); conflict.once('dialog', dialog => dialog.accept()); await uploadModule(conflict, packet); await waitForText(conflict.getByRole('status'), '別のタブなどで保存データが変わりました'); assert.equal(await stored(conflict), latest); assert.equal(await conflict.getByLabel('公演紹介文', { exact: true }).inputValue(), '');
 });
