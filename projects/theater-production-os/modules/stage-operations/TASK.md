@@ -1,0 +1,7 @@
+# 舞台進行作業
+
+対象はこの子フォルダとOSのモジュール登録・カレンダー連携・テスト。実行時依存や外部APIを追加しません。
+
+[起動・検証手順](../../README.md) / [共通保存契約](../../docs/data-contract-v0.1.md) / [追加MVP仕様](../../docs/mvp-v0.4.md) / [検証結果](../../artifacts/verification.md)。
+
+データはproject.modules.stage-operations.data.version:1、安定ID付きitemsで保持。未知の旧形式は確認なしに置換しません。予定と入力は日本時間。個人の連絡先や自動送信は扱いません。共有コードはshared/を参照し、販売用の単独配布物は未定義です。

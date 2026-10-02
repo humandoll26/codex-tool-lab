@@ -1,6 +1,6 @@
-import { checker, validDate, csv } from '../../shared/common.js';
+import { checker, validDate, validTime, csv } from '../../shared/common.js';
+export { validTime } from '../../shared/common.js';
 export const defaults = () => ({ version: 1, items: [] });
-export const validTime = value => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
 export function validate(data, base) {
   const c = checker(base);
   c.rows(data.items, 'items').forEach((r, i) => {

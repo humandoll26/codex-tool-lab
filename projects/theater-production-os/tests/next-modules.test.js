@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { fixture } from './fixture.js';
+import { DEFINITIONS } from '../shared/modules.js';
 import { validateDocument, parseDocument, prepareDocument, writeDocument, STORAGE_KEY } from '../shared/model.js';
 import * as rehearsal from '../modules/rehearsal/model.js';
 import * as submissions from '../modules/submissions/model.js';
@@ -20,7 +21,7 @@ test('NEXT-01/03: seven-module sample and recorded history survive JSON round tr
  assert.deepEqual(restored.project.modules.budget,budget);
  assert.equal(restored.project.modules.rehearsal.data.items[0].history.length,1);
  const demo=parseDocument(await readFile(new URL('../samples/demo.json',import.meta.url),'utf8'));
- assert.equal(Object.keys(demo.project.modules).length,7);
+ assert.equal(Object.keys(demo.project.modules).length,Object.keys(DEFINITIONS).length);
  assert.equal(validateDocument(fixture()).length,0);
 });
 for (const [field,value] of [['date','2026-02-30'],['date',null],['startTime','24:00'],['startTime','x'],['endTime','13:00'],['endTime','12:59'],['status','unknown'],['history',{}]]) {

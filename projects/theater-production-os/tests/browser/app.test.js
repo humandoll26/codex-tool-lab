@@ -238,7 +238,7 @@ test('unknown projectId never edits another project', async t => {
 
 function fullFixture() {
   const d = fixture();
-  for (const id of ['flyer', 'distribution', 'publicity', 'tickets', 'rehearsal', 'submissions']) d.project.modules[id] = {
+  for (const id of Object.keys(DEFINITIONS).filter(id => id !== 'budget')) d.project.modules[id] = {
     id, status: 'not-started', startDate: null, dueDate: null, progress: 0, alerts: [], data: DEFINITIONS[id].defaults() };
   return d;
 }
@@ -343,7 +343,7 @@ test('MVP-09: incompatible old module data is retained unless replacement is con
   assert.equal(JSON.parse(await stored(page)).project.modules.flyer.status, 'on-hold');
 });
 
-test('MVP-01/09: iPhone sample button loads all seven modules after confirmation', async t => {
+test('MVP-01/09: iPhone sample button loads all registered modules after confirmation', async t => {
   const page = await setup(t, { width: 375 }); await page.goto(origin + master);
   assert.equal(await stored(page), null);
   const cancel = page.waitForEvent('dialog');
@@ -354,7 +354,7 @@ test('MVP-01/09: iPhone sample button loads all seven modules after confirmation
   await page.getByRole('button', { name: 'サンプル公演を試す', exact: true }).click();
   await (await accept).accept();
   await waitForText(page.getByRole('status'), 'JSONを取り込み');
-  const d = JSON.parse(await stored(page)); assert.equal(Object.keys(d.project.modules).length, 7);
+  const d = JSON.parse(await stored(page)); assert.equal(Object.keys(d.project.modules).length, Object.keys(DEFINITIONS).length);
   await page.getByRole('link', { name: 'ダッシュボード', exact: true }).click(); await page.waitForURL('**/dashboard.html?projectId=*');
   assert.ok((await page.getByTestId('schedule').innerText()).includes('55枚'));
 });
@@ -479,4 +479,26 @@ test('NEXT-01/04/05/06: submission date protection, returned work, calendar link
   await page.reload(); assert.equal(await page.getByLabel('提出物1の状態', { exact: true }).inputValue(), 'submitted');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   const d=JSON.parse(await stored(page)); assert.equal(d.project.modules.budget.data.plannedSales[0].quantity,80);
+});
+
+test('EXT-01/02/06: front-desk quantities protect saves, finish tasks and export mobile guidance',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/front-desk/index.html');
+ await page.getByLabel('釣銭元手（円）',{exact:true}).fill('10000');await page.getByLabel('当日案内文',{exact:true}).fill('順番にご案内します。');
+ await page.getByRole('button',{name:'受付作業を追加',exact:true}).click();await page.getByLabel('受付作業1の名称',{exact:true}).fill('掲示');await page.getByLabel('受付作業1の期限',{exact:true}).fill(tokyoToday());await page.getByLabel('受付作業1の必要数',{exact:true}).fill('2');
+ const saved=await stored(page);await page.getByLabel('受付作業1の状態',{exact:true}).selectOption('completed');assert.equal(await stored(page),saved);await page.getByLabel('受付作業1の準備済み数',{exact:true}).fill('2');
+ const out=await downloadJSON(page,()=>page.getByRole('button',{name:'当日案内文を書き出す',exact:true}).click());assert.ok(out.includes('10,000円'));assert.ok(out.includes('順番にご案内'));
+ await page.reload();assert.equal(await page.getByLabel('受付作業1の状態',{exact:true}).inputValue(),'completed');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+test('EXT-01/03/06: settlement unpaid totals, overpayment protection and CSV',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/settlement/index.html');
+ await page.getByRole('button',{name:'決算明細を追加',exact:true}).click();await page.getByLabel('決算明細1の名称',{exact:true}).fill('会場費');await page.getByLabel('決算明細1の金額（円）',{exact:true}).fill('100000');await page.getByLabel('決算明細1の入出金済み額（円）',{exact:true}).fill('50000');
+ assert.ok((await text(page)).includes('-100,000円'));assert.ok((await text(page)).includes('50,000円'));const saved=await stored(page);await page.getByLabel('決算明細1の入出金済み額（円）',{exact:true}).fill('100001');assert.equal(await stored(page),saved);await page.getByLabel('決算明細1の入出金済み額（円）',{exact:true}).fill('100000');
+ const out=await downloadJSON(page,()=>page.getByRole('button',{name:'決算CSVを書き出す',exact:true}).click());assert.ok(out.includes('会場費'));await page.reload();assert.equal(await page.getByLabel('決算明細1の金額（円）',{exact:true}).inputValue(),'100000');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+test('EXT-01/04: program collection, text and deadline deep link',async t=>{
+ const page=await setup(t,{saved:fullFixture()});await page.goto(origin+prefix+'modules/program/index.html');await page.getByRole('button',{name:'パンフ原稿を追加',exact:true}).click();await page.getByLabel('パンフ原稿1の名称',{exact:true}).fill('ごあいさつ');await page.getByLabel('パンフ原稿1の原稿期限',{exact:true}).fill(tokyoToday());await page.getByLabel('パンフ原稿1の本文',{exact:true}).fill('架空原稿');
+ const out=await downloadJSON(page,()=>page.getByRole('button',{name:'パンフ掲載文を書き出す',exact:true}).click());assert.ok(out.includes('架空公演'));assert.ok(out.includes('架空原稿'));await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/パンフ原稿：ごあいさつ/}).click();await page.waitForURL('**/modules/program/index.html?projectId=*#item-*');await page.getByLabel('パンフ原稿1の状態',{exact:true}).selectOption('approved');await page.reload();assert.equal(await page.getByLabel('パンフ原稿1の状態',{exact:true}).inputValue(),'approved');
+});
+test('EXT-01/05/06: stage timeline invalid times, ordering and calendar mobile link',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/stage-operations/index.html');await page.getByRole('button',{name:'舞台作業を追加',exact:true}).click();await page.getByLabel('舞台作業1の名称',{exact:true}).fill('搬入');await page.getByLabel('舞台作業1の日付',{exact:true}).fill(tokyoToday());const saved=await stored(page);await page.getByLabel('舞台作業1の終了時刻',{exact:true}).fill('08:00');assert.equal(await stored(page),saved);await page.getByLabel('舞台作業1の終了時刻',{exact:true}).fill('10:00');const out=await downloadJSON(page,()=>page.getByRole('button',{name:'舞台進行表を書き出す',exact:true}).click());assert.ok(out.includes('09:00〜10:00'));await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/09:00 · 舞台：搬入/}).click();await page.waitForURL('**/modules/stage-operations/index.html?projectId=*#item-*');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 });

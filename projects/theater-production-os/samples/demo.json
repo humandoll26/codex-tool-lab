@@ -205,6 +205,114 @@
             }
           ]
         }
+      },
+      "front-desk": {
+        "id": "front-desk",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "changeFund": 10000,
+          "guidance": "開場後は係員が客席へご案内します。",
+          "items": [
+            {
+              "id": "demo-front",
+              "name": "受付掲示",
+              "category": "sign",
+              "assignee": "受付担当",
+              "date": "2026-11-29",
+              "needed": 2,
+              "ready": 1,
+              "status": "preparing",
+              "notes": "入口と受付に掲示"
+            }
+          ]
+        }
+      },
+      "settlement": {
+        "id": "settlement",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-income",
+              "name": "確認済みチケット収入",
+              "kind": "income",
+              "category": "ticket",
+              "amount": 150000,
+              "settled": 100000,
+              "date": "2026-12-02",
+              "notes": "架空の実収入サンプル"
+            },
+            {
+              "id": "demo-expense",
+              "name": "会場費",
+              "kind": "expense",
+              "category": "venue",
+              "amount": 100000,
+              "settled": 50000,
+              "date": "2026-12-05",
+              "notes": ""
+            }
+          ]
+        }
+      },
+      "program": {
+        "id": "program",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "printDate": "2026-11-20",
+          "items": [
+            {
+              "id": "demo-program",
+              "name": "ごあいさつ",
+              "category": "contribution",
+              "assignee": "代表役割",
+              "date": "2026-11-10",
+              "text": "架空の公演にご来場ありがとうございます。",
+              "status": "received"
+            }
+          ]
+        }
+      },
+      "stage-operations": {
+        "id": "stage-operations",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-stage",
+              "name": "搬入",
+              "date": "2026-11-30",
+              "startTime": "09:00",
+              "endTime": "10:00",
+              "department": "舞台",
+              "place": "搬入口",
+              "people": 3,
+              "assignee": "舞台担当",
+              "notes": "順番に搬入",
+              "status": "planned"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [

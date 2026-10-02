@@ -1,0 +1,7 @@
+import { checker, csv } from '../../shared/common.js';
+export const defaults=()=>({version:1,printDate:null,items:[]});
+export function validate(d,base){const c=checker(base);c.date(d.printDate,'printDate');c.rows(d.items,'items').forEach((r,i)=>{if(!r)return;const p=`items.${i}`;c.text(r.name,`${p}.name`,true);c.text(r.assignee,`${p}.assignee`);c.text(r.text,`${p}.text`,['received','review','approved'].includes(r.status));c.date(r.date,`${p}.date`);c.choice(r.category,`${p}.category`,['structure','contribution','profile','advertisement']);c.choice(r.status,`${p}.status`,['pending','requested','received','review','approved']);});return c.issues;}
+export const metrics=(p,d)=>[['掲載項目',`${d.items.length}件`],['未回収',`${d.items.filter(r=>['pending','requested'].includes(r.status)).length}件`],['校了',`${d.items.filter(r=>r.status==='approved').length}件`]];
+export const events=(p,d)=>[...d.items.map(r=>({title:`パンフ原稿：${r.name}`,date:r.date,status:['received','review','approved'].includes(r.status)?'completed':'planned',relatedItemId:r.id})),{title:'パンフ入稿',date:d.printDate,status:'planned',relatedItemId:null}];
+export const publicationText=(p,d)=>[p.title,p.companyName,`会場：${p.venue.name}`,...p.performanceDates.map(s=>s.startsAt.slice(0,16).replace('T',' ')+'（日本時間）'),...d.items.map(r=>`${r.name}\n${r.text}`)].filter(Boolean).join('\n\n');
+export const exportCSV=(p,d)=>csv([['掲載項目','種別','担当役割','原稿期限','状態','本文'],...d.items.map(r=>[r.name,r.category,r.assignee,r.date,r.status,r.text])]);
