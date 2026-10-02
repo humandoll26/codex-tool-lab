@@ -392,6 +392,35 @@
             }
           ]
         }
+      },
+      "archive": {
+        "id": "archive",
+        "status": "not-started",
+        "startDate": null,
+        "dueDate": "2026-12-14",
+        "progress": 0,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "attendance": null,
+          "socialResults": "終演後に告知実績を記入",
+          "reflection": "",
+          "handover": "完成資料を保管担当へ引き継ぐ",
+          "snapshot": null,
+          "items": [
+            {
+              "id": "demo-archive",
+              "name": "完成パンフPDF",
+              "category": "program",
+              "status": "pending",
+              "dueDate": "2026-12-07",
+              "location": "",
+              "keeper": "資料保管担当",
+              "recordedDate": null,
+              "notes": "架空の資料。実ファイルは含みません。"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [

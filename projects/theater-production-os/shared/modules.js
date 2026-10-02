@@ -1,3 +1,4 @@
+import * as archive from '../modules/archive/model.js';
 import * as venue from '../modules/venue/model.js';
 import * as rights from '../modules/rights/model.js';
 import * as show_day from '../modules/show-day/model.js';
@@ -26,6 +27,7 @@ export const DEFINITIONS = {
   'stage-operations': { ...stage_operations, previewText: stage_operations.timeline, name: '舞台進行', description: '舞台進行の作業と記録を整理する' },
   'venue': { ...venue, name: '劇場・日程', description: '劇場・日程の作業と記録を整理する' },
   'rights': { ...rights, previewText: rights.outline, name: '作品・権利', description: '作品・権利の作業と記録を整理する' },
+  archive: { ...archive, previewText: archive.report, name: 'アーカイブ', description: '資料の所在・公演実績・反省と引継ぎを残す' },
   'show-day': { ...show_day, previewText: show_day.report, name: '当日運営', description: '当日運営の作業と記録を整理する' }
 };
 export function validateModules(project) {

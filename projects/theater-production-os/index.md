@@ -35,3 +35,5 @@
 - [MVP v0.7 — カレンダー書き出し](docs/mvp-v0.7.md)
 
 - [MVP v0.8 — 公演収支・実績レポート](docs/mvp-v0.8.md)
+
+- [MVP v0.9 — 公演アーカイブ・引継ぎ](docs/mvp-v0.9.md)

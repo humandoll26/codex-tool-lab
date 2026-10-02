@@ -421,7 +421,8 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['stage-operations', '舞台進行表を書き出す', 'stage-operations.txt'],
     ['venue', '会場CSVを書き出す', 'venue.csv'],
     ['rights', '作品概要を書き出す', 'rights.txt'],
-    ['show-day', '当日記録を書き出す', 'show-day.txt']
+    ['show-day', '当日記録を書き出す', 'show-day.txt'],
+    ['archive', '資料一覧CSVを書き出す', 'archive.csv']
   ]) {
     await page.goto(origin + prefix + `modules/${id}/index.html`);
     const waiting = page.waitForEvent('download');
@@ -438,7 +439,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     const file = await waiting; assert.equal(file.suggestedFilename(), filename);
     const output = await readFile(await file.path(), 'utf8'); assert.ok(output.includes('<img'));
   }
-  assert.equal(downloadCount, 19, 'only explicit export actions download files');
+  assert.equal(downloadCount, 20, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -563,7 +564,7 @@ test('UX-04: explicit copy writes preview text and denied clipboard falls back t
 
 test('UX-05: dashboard puts schedules first and filters modules without changing saved data',async t=>{
  const d=fullFixture();d.project.title='x'.repeat(500);d.project.modules.publicity.status='completed';d.project.modules.flyer.status='not-needed';
- const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'dashboard.html');const saved=await stored(page);const cards=page.locator('.module-card');assert.equal(await cards.count(),12);
+ const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'dashboard.html');const saved=await stored(page);const cards=page.locator('.module-card');assert.equal(await cards.count(),13);
  const headings=await page.getByTestId('schedule').locator('h2').allTextContents();assert.ok(headings.indexOf('今日の予定')<headings.indexOf('制作モジュール'));
  const search=page.getByLabel('モジュールを検索',{exact:true});await search.pressSequentially('決算');assert.equal(await search.inputValue(),'決算');assert.equal(await search.evaluate(el=>el===document.activeElement),true);assert.equal(await cards.count(),1);assert.equal(await cards.locator('h3').innerText(),'決算');
  await search.fill('');await page.getByLabel('モジュールの表示状態',{exact:true}).selectOption('completed');assert.equal(await cards.count(),1);assert.equal(await cards.locator('h3').innerText(),'SNS・広報');await search.fill('該当なし');assert.equal(await cards.count(),0);assert.ok((await page.getByLabel('制作モジュールの一覧',{exact:true}).innerText()).includes('条件に合う'));
@@ -635,4 +636,38 @@ test('REPORT-03/04/05: empty settlement and legacy references remain explicit an
   const page = await setup(t, { saved: d, width: 375 }); await page.goto(origin + prefix + 'modules/settlement/index.html'); const saved = await stored(page);
   const out = await downloadJSON(page, () => page.getByRole('button', { name: '収支・実績レポートを書き出す', exact: true }).click()); assert.ok(out.includes('入力済み決算明細：0件')); assert.ok(out.includes('旧形式のため集計対象外')); assert.ok(out.includes('予算 · 比較：未入力')); assert.ok(out.includes('当日記録 · 集計：未入力'));
   assert.ok((await page.locator('.text-preview').innerText()).includes('<script>')); assert.equal(await page.evaluate(() => Boolean(window.reportExecuted)), false); assert.equal(await page.locator('#main script').count(), 0); assert.equal(await stored(page), saved);
+});
+
+test('ARCH-01/02/04: archive mobile inputs, completed asset requirements, calendar row links and data retention', async t => {
+  const d = fullFixture(); d.project.documents = [{ id: 'old-document', extra: { keep: true } }];
+  const page = await setup(t, { saved: d, width: 375 }); await page.goto(origin + prefix + 'modules/archive/index.html');
+  const attendance = page.getByLabel('実来場者数（未入力は空欄）', { exact: true }); assert.equal(await attendance.inputValue(), ''); await attendance.fill('0'); assert.ok((await text(page)).includes('0人')); await attendance.fill(''); assert.equal(JSON.parse(await stored(page)).project.modules.archive.data.attendance, null); await attendance.fill('500');
+  await page.getByLabel('公演の反省点', { exact: true }).fill('転換時間を長めに確保'); await page.getByLabel('次回への引継ぎ', { exact: true }).fill('資料は保管担当へ'); await page.getByRole('button', { name: '資料を追加', exact: true }).click();
+  await page.getByLabel('資料1の名称', { exact: true }).fill('完成パンフ'); await page.getByLabel('資料1の収集期限', { exact: true }).fill(tokyoToday()); const before = await stored(page);
+  await page.getByLabel('資料1の状態', { exact: true }).selectOption('collected'); assert.equal(await stored(page), before); assert.equal(await page.getByLabel('資料1の保存場所', { exact: true }).getAttribute('aria-invalid'), 'true');
+  const location = 'https://example.invalid/<img src=x onerror="window.archiveBad=true">'; await page.getByLabel('資料1の保存場所', { exact: true }).fill(location); assert.equal(await stored(page), before); await page.getByLabel('資料1の所在記録日', { exact: true }).fill(tokyoToday());
+  const valid = await stored(page); await attendance.fill('-1'); assert.equal(await stored(page), valid); await attendance.fill('500'); assert.ok((await page.locator('.text-preview').innerText()).includes(location)); assert.equal(await page.locator('#main img').count(), 0); assert.equal(await page.evaluate(() => Boolean(window.archiveBad)), false);
+  const csv = await downloadJSON(page, () => page.getByRole('button', { name: '資料一覧CSVを書き出す', exact: true }).click()); assert.ok(csv.includes('完成パンフ')); const out = await downloadJSON(page, () => page.getByRole('button', { name: 'アーカイブ原稿を書き出す', exact: true }).click()); assert.ok(out.includes('実来場者数：500人'));
+  assert.deepEqual(JSON.parse(await stored(page)).project.documents, d.project.documents); assert.equal(JSON.parse(await stored(page)).project.modules.budget.data.plannedSales[0].quantity, 80);
+  await page.getByRole('link', { name: 'カレンダー', exact: true }).click(); await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today'); await page.getByRole('link', { name: /資料収集：完成パンフ · 完了/ }).click(); await page.waitForURL('**/modules/archive/index.html?projectId=*#item-*'); assert.equal(await page.getByLabel('資料1の保存場所', { exact: true }).inputValue(), location); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+
+test('ARCH-03: explicit financial snapshot stays frozen, duplicate capture is inert, replacement and removal require confirmation', async t => {
+  const d = JSON.parse(await readFile(path.join(projectRoot, 'samples/demo.json'), 'utf8'));
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'modules/archive/index.html');
+  const capture = () => page.getByRole('button', { name: '現在の収支原稿をアーカイブに保存', exact: true }).click(); await capture();
+  const saved = await stored(page), snapshot = JSON.parse(saved).project.modules.archive.data.snapshot; assert.ok(snapshot.report.includes('実収入：150,000円')); assert.ok(snapshot.capturedAt.endsWith('Z'));
+  await capture(); assert.equal(await stored(page), saved); assert.ok((await page.getByRole('status').innerText()).includes('同じ収支原稿は保存済み'));
+  await page.getByText('公演情報を作成・編集する', { exact: true }).click(); await page.getByLabel('料金区分1の料金（円）', { exact: true }).fill('4000'); assert.deepEqual(JSON.parse(await stored(page)).project.modules.archive.data.snapshot, snapshot);
+  page.once('dialog', dialog => dialog.dismiss()); await capture(); assert.deepEqual(JSON.parse(await stored(page)).project.modules.archive.data.snapshot, snapshot);
+  page.once('dialog', dialog => dialog.accept()); await capture(); const replaced = JSON.parse(await stored(page)).project.modules.archive.data.snapshot; assert.ok(replaced.report.includes('想定売上：640,000円')); assert.notEqual(replaced.report, snapshot.report);
+  page.once('dialog', dialog => dialog.dismiss()); await page.getByRole('button', { name: '保存した収支原稿を削除', exact: true }).click(); assert.deepEqual(JSON.parse(await stored(page)).project.modules.archive.data.snapshot, replaced);
+  const exported = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click())); assert.deepEqual(exported.project.modules.archive.data.snapshot, replaced);
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: '保存した収支原稿を削除', exact: true }).click(); assert.equal(JSON.parse(await stored(page)).project.modules.archive.data.snapshot, null); assert.deepEqual(JSON.parse(await stored(page)).project.modules.settlement.data, d.project.modules.settlement.data);
+});
+
+test('ARCH-03: snapshot capture refuses absent settlement and invalid edits without losing data', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + prefix + 'modules/archive/index.html'); const saved = await stored(page);
+  await page.getByRole('button', { name: '現在の収支原稿をアーカイブに保存', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('先に決算')); assert.equal(await stored(page), saved);
+  await page.getByLabel('実来場者数（未入力は空欄）', { exact: true }).fill('1.5'); await page.getByRole('button', { name: '現在の収支原稿をアーカイブに保存', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('入力エラーを修正')); assert.equal(await stored(page), saved);
 });
