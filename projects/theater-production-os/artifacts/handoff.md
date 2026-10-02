@@ -4,7 +4,7 @@
 
 ## 最新の依頼：MVP実装の再開
 
-監査後にユーザーから「実装を続けて」と指示され、MVP v0.12の受付/舞台印刷とJSON取込み上限を実装。単体172件・ブラウザ63件成功。印刷例と根拠は[検証記録](verification.md)、追加仕様は[mvp-v0.12.md](../docs/mvp-v0.12.md)。ソースのコミット・配信情報は下記で更新する。
+監査後にユーザーから「実装を続けて」と指示され、MVP v0.12の受付/舞台印刷とJSON取込み上限を実装。単体172件・ブラウザ63件成功。ソースと配信ブランチへpush済み。配信66アプリファイルのバイト一致と全18入口を含む追加監査5件も確認。印刷例と根拠は[検証記録](verification.md)、追加仕様は[mvp-v0.12.md](../docs/mvp-v0.12.md)。
 
 ## 前回の依頼：セキュリティ監査
 
@@ -30,12 +30,14 @@ budget / flyer / distribution / publicity / tickets / rehearsal / submissions / 
 ## Gitと配信
 
 - ソースブランチ: tool/theater-production-os/budget-mvp
-- 最新実装: dc5c0a938d5f4b4db1567a1b50e8ff86f73e796d
-- 配信: 294b38843bdd4a70572898ddaec821a6b1a9f1f1（gh-pages）
-- 配信はコミット済みの62アプリファイル＋.nojekyll。テスト・文書・node_modulesは含めない。
+- 最新実装: 6e06839410bfb9e616d1017d50d64db72970048e
+- 配信: 4123f84608a7e6b9900ce5937d765cf7a867dae9（gh-pages）
+- 配信はコミット済みの66アプリファイル＋.nojekyll。テスト・文書・出力例PDF/画像・node_modulesは含めない。
 - mainへのマージ・実装PR作成はしていない。公開URLのHTTP応答はクラウドの接続制約で未確認。
 
 開始時はgit statusと現在のブランチを確認する。文書だけの後続コミットがある場合、上記の実装とアプリは同じ。
+
+確認URL: https://humandoll26.github.io/codex-tool-lab/?v=0.12 。受付は `/modules/front-desk/index.html?v=0.12`、舞台は `/modules/stage-operations/index.html?v=0.12`。Pagesの実際のHTTP応答とGoogle警告解除は未確認。画面にMVP v0.12が出ることを確認する。
 
 ## 再現できる検証
 

@@ -274,3 +274,7 @@ npm testは163件、npm run test:browserの最終実行は53件成功。失敗�
 架空データの出力例：[受付PDF](front-desk-print.pdf) / [舞台PDF](stage-operations-print.pdf)、[受付画像](front-desk-print.png) / [舞台画像](stage-operations-print.png)。PDFは機密保管用の暗号化ファイルではない。
 
 実機Safari/iPhoneの印刷・PDF保存、Google警告理由/解除、公開サイトHTTP応答は未確認。同一オリジン隔離と共有JSONの項目選択は未実装。正式Securityスキャンの実施結果ではない。
+
+### v0.12配信ファイル確認
+
+実装6e06839410bfb9e616d1017d50d64db72970048e、配信4123f84608a7e6b9900ce5937d765cf7a867dae9をpushしてremoteを確認。取得した配信ツリーの全66アプリファイルはソースとバイト一致、18入口の版表示はv0.12。配信ツリーをローカルHTTPで提供し、追加監査5件成功（18入口・サンプル取得、保存境界、深さ拒否、専用JSON共有範囲、prototype/CSV/ICS処理）。公開HTTPや実機を検証した結果ではない。
