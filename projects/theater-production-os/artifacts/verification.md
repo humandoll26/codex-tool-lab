@@ -245,3 +245,15 @@ npm testは163件、npm run test:browserの最終実行は53件成功。失敗�
 ### v0.11配信ファイル確認
 
 配信294b38843bdd4a70572898ddaec821a6b1a9f1f1の62アプリファイルはコミット済みソースと一致。配信ツリーのHTTPでサンプル取込み・全18入口を確認し、HTTP／JavaScriptエラー0。公開サイトのHTTP応答・Google警告解除を確認した結果ではない。
+
+## 2026-10-02 — 無断情報取得・危険な読込みの手動監査
+
+[監査結果](manual-security-audit.md)を保存。正式Codex Securityスキャンは必須参照とpreflight/完了機能が利用できず未実施。配信294b388の62アプリファイルと手元の実装のバイト一致を再確認。
+
+- 配信ツリーを対象とする `OS_AUDIT_RUNTIME_ROOT=/tmp/os-security-audit-20261002/deployed node --test tests/browser/security-audit.test.js` は追加5件成功、失敗・取消・スキップ0。
+- 18入口でOS専用キーだけの読取り、監視した機密API呼出し0、外部通信/GET以外の送信/自動DL0。HTML攻撃文字列と資料URLは実行・取得されない。サンプルの固定ローカルJSON取得も確認。
+- 同一オリジンの別パスからOS保存の合成メモ読取り・公演名改変を再現。別オリジンからは読めない。チラシ専用JSONに共通の合成私的拡張が平文で残ることを再現。
+- 12,000段のJSONはスタック上限で拒否し既存保存/画面を保持。prototype特殊キーのデータ保持と汚染なし、特殊モジュールID拒否、CSV数式開始文字/引用符、ICS改行の処理を確認。
+- 既存の `node --test --test-name-pattern='local security checks' tests/browser/app.test.js` も1件成功、18入口と明示35出力を再確認。MVPの全体テストは今回再実行していない。
+
+公開URLのcurlは環境プロキシのCONNECT 403で失敗。公開レスポンス/ヘッダー、Googleの検出理由、他のPagesサイト、実機Safariは未検証。アプリ実装・配信の変更なし。
