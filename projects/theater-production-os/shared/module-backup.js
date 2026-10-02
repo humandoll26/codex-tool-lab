@@ -1,6 +1,7 @@
 import { DEFINITIONS } from './modules.js';
 import { isRecord } from './common.js';
 import { parseDocument, prepareDocument, validateDocument } from './model.js';
+import { parseBoundedJSON, assertJSONSize } from './json-limits.js';
 const format = 'theater-production-os-module';
 function ensureModule(id) {
   if (typeof id !== 'string' || !Object.hasOwn(DEFINITIONS, id)) throw new Error('対応するモジュールがありません。');
@@ -14,11 +15,13 @@ export function moduleBackup(document, id) {
   copy.project.calendarEvents = copy.project.calendarEvents.filter(e => isRecord(e) && e.moduleId === id);
   // The reduced document must still satisfy the shared master and reference contracts.
   parseDocument(JSON.stringify(copy));
-  return JSON.stringify({ format, formatVersion: 1, moduleId: id, document: copy }, null, 2);
+  const packet = { format, formatVersion: 1, moduleId: id, document: copy };
+  let output = JSON.stringify(packet, null, 2);
+  try { assertJSONSize(output); } catch { output = JSON.stringify(packet); }
+  parseBoundedJSON(output); return output;
 }
 export function parseModuleBackup(source, expectedId) {
-  let packet;
-  try { packet = JSON.parse(source); } catch { throw new Error('JSONの形式が不正です。'); }
+  const packet = parseBoundedJSON(source);
   if (!isRecord(packet) || packet.format !== format || packet.formatVersion !== 1) throw new Error('モジュール専用JSONを選んでください。全公演JSONは「JSONを取り込む」を使ってください。');
   ensureModule(packet.moduleId);
   if (packet.moduleId !== expectedId) throw new Error('この画面とは別のモジュールのJSONです。対応する入口で取り込んでください。');

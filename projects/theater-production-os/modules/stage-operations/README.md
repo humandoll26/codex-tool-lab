@@ -5,3 +5,5 @@
 [起動・検証手順](../../README.md) / [共通保存契約](../../docs/data-contract-v0.1.md) / [追加MVP仕様](../../docs/mvp-v0.4.md) / [検証結果](../../artifacts/verification.md)。
 
 データはproject.modules.stage-operations.data.version:1、安定ID付きitemsで保持。未知の旧形式は確認なしに置換しません。予定と入力は日本時間。個人の連絡先や自動送信は扱いません。共有コードはshared/を参照し、販売用の単独配布物は未定義です。
+
+「舞台進行表の印刷用プレビュー」で日付・開始順の作業表を表示し、「印刷・PDF保存」でブラウザの印刷画面を開きます。完了・取消も載せ、時間重複は先頭100件を表示します。「編集画面へ戻る」かEscapeで戻れます。[仕様](../../docs/mvp-v0.12.md)。

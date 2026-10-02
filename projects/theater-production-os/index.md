@@ -41,3 +41,4 @@
 - [MVP v0.10 — 保存の競合検知](docs/mvp-v0.10.md)
 
 - [MVP v0.11 — モジュール単位のJSON](docs/mvp-v0.11.md)
+- [MVP v0.12 — 取込み上限・印刷用資料](docs/mvp-v0.12.md)

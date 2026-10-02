@@ -76,3 +76,7 @@ node --test --test-name-pattern='local security checks' tests/browser/app.test.j
 - Search Consoleのセキュリティ問題・Googleの検出URL/理由、アカウント上の他のPagesサイト、実機Safari/Chrome・拡張機能・端末侵害は未確認。Google警告の原因特定・解除は完了していない。
 - 正式な `codex-security:security-scan` は実行できなかった。[SKILL.md](skill://Plugin_1e648473be9c8191a91ac3947151af55/security-scan/SKILL.md) は “Start source review and launch scan workers only after preflight returns `ready`.” と指定するが、必須の参照 `scan-prologue.md` / `core-scan.md`、preflight・完了ツール/スクリプトを利用できなかった。
 - その正式ワークフローは未実施。この文書とテストは別途行った手動監査であり、正式Codex Securityの生成レポート・完了証明ではない。検証済み範囲に無断取得を示す証拠はないが、未知の脆弱性がないとは保証しない。
+
+## 後続実装の状態（MVP v0.12）
+
+ユーザーの継続指示により、R3の可用性対策として容量/深さ/値数/配列長/販売入力セル数の上限と非再帰検証、舞台重複注意の表示上限を追加した。[仕様](../docs/mvp-v0.12.md)と[検証](verification.md)を参照。12,000段のJSONは深さ上限の案内で拒否し元データを保持する。上記監査本体はv0.11の履歴として保持する。R1のオリジン共有とR2のJSON共有範囲、Google警告原因は未解決。v0.12の正式Codex Security再スキャンを実施したという意味ではない。

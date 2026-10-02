@@ -2,8 +2,21 @@ import { checker, validTime, csv } from '../../shared/common.js';
 export const defaults=()=>({version:1,items:[]});
 export function validate(d,base){const c=checker(base);c.rows(d.items,'items').forEach((r,i)=>{if(!r)return;const p=`items.${i}`;for(const key of ['name','department','place','assignee','notes'])c.text(r[key],`${p}.${key}`,['name','department'].includes(key));c.date(r.date,`${p}.date`);if(r.date===null)c.error(`${p}.date`,'作業日を入力してください。');for(const key of ['startTime','endTime'])if(!validTime(r[key]))c.error(`${p}.${key}`,'正しい時刻を入力してください。');if(validTime(r.startTime)&&validTime(r.endTime)&&r.endTime<=r.startTime)c.error(`${p}.endTime`,'終了は同日の開始より後にしてください。');c.number(r.people,`${p}.people`);c.choice(r.status,`${p}.status`,['planned','completed','cancelled']);});return c.issues;}
 export const ordered=d=>[...d.items].sort((a,b)=>a.date.localeCompare(b.date)||a.startTime.localeCompare(b.startTime)||a.name.localeCompare(b.name));
-export const warnings=(p,d)=>{const result=[];for(let i=0;i<d.items.length;i++)for(let n=i+1;n<d.items.length;n++){const a=d.items[i],b=d.items[n];if(a.status!=='cancelled'&&b.status!=='cancelled'&&a.date===b.date&&a.department===b.department&&a.place===b.place&&a.startTime<b.endTime&&b.startTime<a.endTime)result.push(`時間重複：${a.name} / ${b.name}（${a.department}・${a.place||'場所未定'}）`);}return result;};
-export const metrics=(p,d)=>[['作業',`${d.items.length}件`],['未完了',`${d.items.filter(r=>r.status==='planned').length}件`],['重複注意',`${warnings(p,d).length}件`]];
+export function warnings(project, data) {
+  const result = [];
+  for (let i = 0; i < data.items.length; i++) for (let n = i + 1; n < data.items.length; n++) {
+    const a = data.items[i], b = data.items[n];
+    if (a.status !== 'cancelled' && b.status !== 'cancelled' && a.date === b.date && a.department === b.department && a.place === b.place && a.startTime < b.endTime && b.startTime < a.endTime) {
+      result.push(`時間重複：${a.name} / ${b.name}（${a.department}・${a.place || '場所未定'}）`);
+      if (result.length === 100) return result;
+    }
+  }
+  return result;
+}
+export function metrics(project, data) {
+  const count = warnings(project, data).length;
+  return [['作業', `${data.items.length}件`], ['未完了', `${data.items.filter(r => r.status === 'planned').length}件`], ['重複注意', `${count}件${count === 100 ? '以上' : ''}`]];
+}
 export const events=(p,d)=>d.items.map(r=>({title:`舞台：${r.name}`,date:r.date,time:r.startTime,endTime:r.endTime,location:r.place,status:r.status,relatedItemId:r.id}));
 export const timeline=(p,d)=>[p.title,...ordered(d).map(r=>`${r.date} ${r.startTime}〜${r.endTime}（日本時間） ${r.name} · ${r.department} · ${r.place||'場所未定'} · ${r.people}人 · ${r.assignee||'担当未定'} · ${r.status}${r.notes?'\n'+r.notes:''}`)].join('\n\n');
 export const exportCSV=(p,d)=>csv([['作業','日付','開始（日本時間）','終了','部署','場所','必要人数','担当役割','状態','メモ'],...ordered(d).map(r=>[r.name,r.date,r.startTime,r.endTime,r.department,r.place,r.people,r.assignee,r.status,r.notes])]);

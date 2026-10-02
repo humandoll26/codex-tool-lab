@@ -98,12 +98,12 @@ test('audit boundary: sibling paths can read and alter OS storage; other origins
   await page.goto(otherOrigin); assert.equal(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY), null);
 });
 
-test('audit: deeply nested JSON fails safely without replacing existing data', async t => {
+test('audit: deeply nested JSON is rejected without replacing existing data', async t => {
   const page = await setup(t); await page.goto(origin + prefix);
   const saved = await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY);
   const source = saved.slice(0, -1) + ',"deep":' + '{"a":'.repeat(12000) + 'null' + '}'.repeat(12000) + '}';
   await page.locator('input[data-import=project]').setInputFiles({ name: 'deep.json', mimeType: 'application/json', buffer: Buffer.from(source) });
-  await page.getByRole('status').filter({ hasText: /call stack/i }).waitFor();
+  await page.getByRole('status').filter({ hasText: /深さ|call stack/i }).waitFor();
   assert.equal(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY), saved);
   assert.equal(await page.getByLabel('公演タイトル（必須）', { exact: true }).inputValue(), '架空公演');
 });

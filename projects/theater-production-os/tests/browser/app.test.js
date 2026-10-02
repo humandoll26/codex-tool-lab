@@ -1,7 +1,7 @@
 import { before, after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { chromium } from 'playwright';
@@ -243,6 +243,77 @@ function fullFixture() {
     id, status: 'not-started', startDate: null, dueDate: null, progress: 0, alerts: [], data: DEFINITIONS[id].defaults() };
   return d;
 }
+function printFixture() {
+  const d = fullFixture();
+  const front = d.project.modules['front-desk'].data;
+  front.changeFund = 12000; front.guidance = '開場は開演30分前です。\n受付で料金をご確認ください。';
+  front.items = [{ id: 'desk', name: '受付配置', category: 'staff', assignee: '受付リーダー', date: '2026-11-29', needed: 3, ready: 2, status: 'preparing', notes: '交代要員を確認' }];
+  d.project.modules['stage-operations'].data.items = [
+    { id: 'later', name: '場当たり', date: '2026-11-30', startTime: '10:00', endTime: '11:00', department: '舞台', place: 'ステージ', people: 3, assignee: '舞台監督', notes: '動線を確認', status: 'planned' },
+    { id: 'early', name: '搬入', date: '2026-11-30', startTime: '09:00', endTime: '10:30', department: '舞台', place: 'ステージ', people: 4, assignee: '舞台班', notes: '完了後に通路を確保', status: 'completed' },
+    { id: 'cancelled', name: '取消作業', date: '2026-11-29', startTime: '09:00', endTime: '10:00', department: '照明', place: '', people: 0, assignee: '', notes: '', status: 'cancelled' }
+  ];
+  return d;
+}
+test('PRINT-01/02: front-desk preview contains master and preparation details, prints only on demand and restores focus', async t => {
+  const page = await setup(t, { saved: printFixture() }); await page.goto(origin + prefix + 'modules/front-desk/index.html');
+  const saved = await stored(page); await page.evaluate(() => { window.auditPrintCalls = 0; window.print = () => window.auditPrintCalls++; });
+  const trigger = page.getByRole('button', { name: '受付資料の印刷用プレビュー', exact: true }); await trigger.click();
+  const preview = page.getByRole('region', { name: '印刷用プレビュー' });
+  for (const value of ['架空公演', 'サンプル劇場', '2026-11-30 14:00', '2026-11-30 18:00', '3,000円', '12,000円', '受付配置', '受付リーダー', '2 / 3', '準備中', '交代要員を確認']) assert.ok((await preview.innerText()).includes(value));
+  assert.equal(await page.evaluate(() => window.auditPrintCalls), 0); assert.equal(await page.locator('#main').isVisible(), false);
+  await page.getByRole('button', { name: '印刷・PDF保存', exact: true }).click(); assert.equal(await page.evaluate(() => window.auditPrintCalls), 1);
+  assert.equal(await stored(page), saved); await page.getByRole('button', { name: '編集画面へ戻る', exact: true }).click();
+  assert.equal(await page.locator('#main').isVisible(), true); assert.equal(await trigger.evaluate(node => node === document.activeElement), true);
+  assert.equal(await stored(page), saved); assert.equal(await page.getByLabel('当日案内文', { exact: true }).inputValue(), printFixture().project.modules['front-desk'].data.guidance);
+});
+test('PRINT-01/03: stage preview sorts work, retains cancellations and warns overlaps, both previews generate A4 PDFs', async t => {
+  const page = await setup(t, { saved: printFixture() });
+  for (const [id, label, heading] of [['front-desk', '受付資料の印刷用プレビュー', '受付用資料'], ['stage-operations', '舞台進行表の印刷用プレビュー', '舞台進行表']]) {
+    await page.goto(origin + prefix + `modules/${id}/index.html`); const saved = await stored(page);
+    await page.getByRole('button', { name: label, exact: true }).click();
+    const preview = page.getByRole('region', { name: '印刷用プレビュー' }); assert.ok((await preview.innerText()).includes(heading));
+    if (id === 'stage-operations') {
+      const rows = await preview.locator('tbody tr').allTextContents(); assert.ok(rows[0].includes('取消作業')); assert.ok(rows[1].includes('搬入')); assert.ok(rows[2].includes('場当たり'));
+      assert.ok((await preview.innerText()).includes('時間重複')); assert.ok(rows[0].includes('取消')); assert.ok(rows[1].includes('完了'));
+    }
+    await page.emulateMedia({ media: 'print' }); assert.equal(await preview.locator('.print-controls').isVisible(), false);
+    const pdf = await page.pdf({ preferCSSPageSize: true, printBackground: false }); assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');
+    await writeFile(`/tmp/os-${id}-print.pdf`, pdf); await page.emulateMedia({ media: 'screen' });
+    assert.equal(await stored(page), saved); await page.keyboard.press('Escape'); assert.equal(await preview.count(), 0);
+  }
+});
+test('PRINT-02: invalid inputs refuse preview while storage failure permits valid unsaved printing', async t => {
+  const page = await setup(t, { saved: printFixture(), failure: 'quota' }); await page.goto(origin + prefix + 'modules/front-desk/index.html');
+  const saved = await stored(page); await page.getByLabel('釣銭元手（円）', { exact: true }).fill('-1');
+  await page.getByRole('button', { name: '受付資料の印刷用プレビュー', exact: true }).click(); assert.equal(await page.locator('.print-panel').count(), 0);
+  await page.getByLabel('釣銭元手（円）', { exact: true }).fill('20000');
+  await page.getByRole('button', { name: '受付資料の印刷用プレビュー', exact: true }).click(); assert.ok((await page.locator('.print-document').innerText()).includes('20,000円'));
+  assert.equal(await stored(page), saved); await page.keyboard.press('Escape'); assert.equal(await page.getByLabel('釣銭元手（円）', { exact: true }).inputValue(), '20000');
+  await page.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('保存できていない'));
+});
+test('PRINT-03: hostile long text stays inert and mobile preview contains overflow and print failure feedback', async t => {
+  const d = printFixture(), hostile = '<img src="https://example.invalid/leak" onerror="window.auditPrintExecuted=true"><script>window.auditPrintExecuted=true</script>';
+  d.project.modules['front-desk'].data.guidance = hostile + '\n' + '長い案内'.repeat(200);
+  const page = await setup(t, { saved: d, width: 375 }), external = []; let downloads = 0;
+  page.on('request', r => { if (new URL(r.url()).origin !== origin) external.push(r.url()); }); page.on('download', () => downloads++);
+  await page.context().route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+  await page.goto(origin + prefix + 'modules/front-desk/index.html'); await page.getByRole('button', { name: '受付資料の印刷用プレビュー', exact: true }).click();
+  assert.ok((await page.locator('.print-document').innerText()).includes(hostile)); assert.equal(await page.locator('.print-panel img, .print-panel script, .print-panel iframe').count(), 0);
+  assert.equal(await page.evaluate(() => Boolean(window.auditPrintExecuted)), false); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await page.evaluate(() => { window.print = () => { throw new Error('unavailable'); }; }); await page.getByRole('button', { name: '印刷・PDF保存', exact: true }).click();
+  assert.ok((await page.getByRole('status').innerText()).includes('印刷を開始できません')); assert.deepEqual(external, []); assert.equal(downloads, 0);
+  await page.screenshot({ path: '/tmp/os-front-desk-print-mobile.png', fullPage: true });
+});
+test('LIMIT-02: both JSON file inputs reject oversize before confirmation and keep saved data', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + prefix + 'modules/flyer/index.html');
+  const saved = await stored(page); let dialogs = 0; page.on('dialog', d => { dialogs++; d.dismiss(); });
+  for (const scope of ['project', 'module']) {
+    await page.locator(`input[data-import=${scope}]`).setInputFiles({ name: 'too-big.json', mimeType: 'application/json', buffer: Buffer.alloc(2 * 1024 * 1024 + 1, ' ') });
+    await page.getByRole('status').filter({ hasText: /2MiB/ }).waitFor(); assert.equal(await stored(page), saved);
+  }
+  assert.equal(dialogs, 0);
+});
 test('MVP-01/02/10: flyer editing, master-linked preview, text export and saved approval', async t => {
   const page = await setup(t, { saved: fullFixture(), width: 375 });
   await page.goto(origin + prefix + 'modules/flyer/index.html');
