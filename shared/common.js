@@ -1,5 +1,6 @@
 export const isRecord = v => v !== null && typeof v === 'object' && !Array.isArray(v);
 export const newId = prefix => `${prefix}-${crypto.randomUUID()}`;
+export const validTime = value => typeof value === 'string' && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
 export function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00Z`);
