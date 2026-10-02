@@ -135,3 +135,15 @@ npm testは105件、npm run test:browserは28件成功。失敗・取消・ス�
 - EXT-06: 不正17ケースの保存／取込拒否、前保存保護。全14入口でHTML風入力の実行・外部送信・自動ダウンロードなし。
 
 iPhone実機・Safari・公開URLの応答とGoogle警告解除は未検証。税務・個人連絡先・自動提出や外部ツール連携は未実装。
+
+## 2026-10-02 — MVP v0.5検証
+
+npm testは125件、npm run test:browserは31件成功。失敗・取消・スキップ・todo各0。Chromium 151／Node.js 24／Playwright 1.63.0。架空データ・専用HTTPサーバーで実施。
+
+- FINAL-01: 14モジュールサンプル、旧公演・予算の保持とJSON往復成功。
+- FINAL-02: 会場名反映でステージ日時と予算不変。本予約の日付必須、仮押さえ期限、支払超過、搬入搬出時刻、合計範囲超過の拒否成功。同一行の3予定IDの重複なし。
+- FINAL-03: 確認日と根拠を両方入力した後だけ確認済みを保存。作品概要・再読込・不要の期限除外成功。
+- FINAL-04: 物販10個×500円＝5000円、未対応トラブル件数と時刻順を確認。小数・負数・範囲超過を拒否し、決算データは不変。
+- FINAL-05: 375pxの入力・行リンク・再読込、全17入口で悪性文字列の実行・外部通信・自動ダウンロードなし。13モジュールの書出し＋JSONの手動14ダウンロードを確認。
+
+追加7画面は375pxでdocument幅375pxを実測し、入力画面を目視確認。画面はfront-desk-mobile.png、settlement-mobile.png、program-mobile.png、stage-operations-mobile.png、venue-mobile.png、rights-mobile.png、show-day-mobile.pngに保存。Safari・実機iPhone・公開URLの応答・Google警告解除は未確認。

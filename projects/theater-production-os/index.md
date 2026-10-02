@@ -1,6 +1,6 @@
 # 劇団制作OS — 設計の入口
 
-- 状態: **OS MVP v0.4実装済み（11モジュール・カレンダー・ダッシュボード、PR採用前）**
+- 状態: **OS MVP v0.5実装済み（14モジュール・カレンダー・ダッシュボード、PR採用前）**
 - プロジェクトID: `theater-production-os`
 - OS入口: `index.html`
 - 予算の単体入口: `modules/budget/index.html`
@@ -27,3 +27,5 @@
 - [稽古・提出物の追加仕様](docs/mvp-v0.3.md)
 
 - [受付・決算・パンフ・舞台進行の仕様](docs/mvp-v0.4.md)
+
+- [劇場・作品権利・当日運営の仕様](docs/mvp-v0.5.md)

@@ -80,7 +80,7 @@ export function eventsFor(project) {
     const status = ['completed', 'not-needed'].includes(m.status) ? 'completed' : m.status === 'on-hold' ? 'on-hold' : 'planned';
     for (const [key, label] of [['startDate', '開始'], ['dueDate', '期限']]) if (m[key]) add({ id: `${id}-${key}`, moduleId: id, title: `${def.name}：${label}`, date: m[key], status, relatedItemId: null, type: key });
     const data = m.data; if (data?.version !== 1) continue;
-    if (def.events) for (const event of def.events(project, data)) add({ ...event, id: `${id}-${event.relatedItemId ?? 'global'}`, moduleId: id, type: 'task', status: ['completed', 'cancelled'].includes(event.status) ? event.status : status });
+    if (def.events) for (const event of def.events(project, data)) add({ ...event, id: JSON.stringify([id, event.relatedItemId, event.key ?? 'task']), moduleId: id, type: 'task', status: ['completed', 'cancelled'].includes(event.status) ? event.status : status });
     if (id === 'flyer') for (const [key, title] of [['printDate', 'チラシ入稿'], ['deliveryDate', 'チラシ納品']]) if (data[key]) add({ id: `${id}-${key}`, moduleId: id, title, date: data[key], status, relatedItemId: null, type: 'task' });
     if (['distribution', 'publicity'].includes(id)) for (const row of data.items) if (row.date) add({ id: `${id}-${row.id}`, moduleId: id,
       title: id === 'distribution' ? `配布：${row.name}` : `投稿：${row.title}`, date: row.date,

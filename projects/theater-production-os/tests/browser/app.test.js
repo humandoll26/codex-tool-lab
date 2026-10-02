@@ -411,7 +411,14 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['publicity', '投稿計画CSVを書き出す', 'publicity.csv'],
     ['tickets', '販売CSVを書き出す', 'tickets.csv'],
     ['rehearsal', '全体連絡文を書き出す', 'rehearsal.txt'],
-    ['submissions', '提出物CSVを書き出す', 'submissions.csv']
+    ['submissions', '提出物CSVを書き出す', 'submissions.csv'],
+    ['front-desk', '受付CSVを書き出す', 'front-desk.csv'],
+    ['settlement', '決算CSVを書き出す', 'settlement.csv'],
+    ['program', 'パンフ掲載文を書き出す', 'program.txt'],
+    ['stage-operations', '舞台進行表を書き出す', 'stage-operations.txt'],
+    ['venue', '会場CSVを書き出す', 'venue.csv'],
+    ['rights', '作品概要を書き出す', 'rights.txt'],
+    ['show-day', '当日記録を書き出す', 'show-day.txt']
   ]) {
     await page.goto(origin + prefix + `modules/${id}/index.html`);
     const waiting = page.waitForEvent('download');
@@ -420,7 +427,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
   }
   const exported = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click()));
   assert.equal(exported.project.title, payload);
-  assert.equal(downloadCount, 7, 'only explicit export actions download files');
+  assert.equal(downloadCount, 14, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -501,4 +508,15 @@ test('EXT-01/04: program collection, text and deadline deep link',async t=>{
 });
 test('EXT-01/05/06: stage timeline invalid times, ordering and calendar mobile link',async t=>{
  const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/stage-operations/index.html');await page.getByRole('button',{name:'舞台作業を追加',exact:true}).click();await page.getByLabel('舞台作業1の名称',{exact:true}).fill('搬入');await page.getByLabel('舞台作業1の日付',{exact:true}).fill(tokyoToday());const saved=await stored(page);await page.getByLabel('舞台作業1の終了時刻',{exact:true}).fill('08:00');assert.equal(await stored(page),saved);await page.getByLabel('舞台作業1の終了時刻',{exact:true}).fill('10:00');const out=await downloadJSON(page,()=>page.getByRole('button',{name:'舞台進行表を書き出す',exact:true}).click());assert.ok(out.includes('09:00〜10:00'));await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/09:00 · 舞台：搬入/}).click();await page.waitForURL('**/modules/stage-operations/index.html?projectId=*#item-*');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+
+test('FINAL-01/02/05: venue choice updates only the master name and reservation errors preserve saves',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/venue/index.html');await page.getByRole('button',{name:'会場候補を追加',exact:true}).click();await page.getByLabel('会場候補1の名称',{exact:true}).fill('新しい架空会場');const before=JSON.parse(await stored(page));await page.getByRole('button',{name:'会場候補1の名称を公演情報へ反映',exact:true}).click();const after=JSON.parse(await stored(page));assert.equal(after.project.venue.name,'新しい架空会場');assert.deepEqual(after.project.performanceDates,before.project.performanceDates);assert.deepEqual(after.project.modules.budget,before.project.modules.budget);
+ const saved=await stored(page);await page.getByLabel('会場候補1の予約状態',{exact:true}).selectOption('booked');assert.equal(await stored(page),saved);await page.getByLabel('会場候補1の候補日',{exact:true}).fill(tokyoToday());await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/会場：新しい架空会場/}).click();await page.waitForURL('**/modules/venue/index.html?projectId=*#item-*');await page.reload();assert.equal(await page.getByLabel('会場候補1の予約状態',{exact:true}).inputValue(),'booked');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+test('FINAL-01/03/05: rights evidence/date validation, outline export and saved confirmation',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/rights/index.html');await page.getByLabel('作品名',{exact:true}).fill('架空作品');await page.getByLabel('上演時間（分）',{exact:true}).fill('90');await page.getByRole('button',{name:'権利確認を追加',exact:true}).click();await page.getByLabel('権利確認1の名称',{exact:true}).fill('上演条件');const saved=await stored(page);await page.getByLabel('権利確認1の状態',{exact:true}).selectOption('confirmed');assert.equal(await stored(page),saved);await page.getByLabel('権利確認1の確認日',{exact:true}).fill(tokyoToday());assert.equal(await stored(page),saved);await page.getByLabel('権利確認1の根拠メモ',{exact:true}).fill('担当による架空の確認記録');const out=await downloadJSON(page,()=>page.getByRole('button',{name:'作品概要を書き出す',exact:true}).click());assert.ok(out.includes('90分'));assert.ok(out.includes('架空作品'));await page.reload();assert.equal(await page.getByLabel('権利確認1の状態',{exact:true}).inputValue(),'confirmed');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+test('FINAL-01/04/05: show-day goods revenue, errors and chronological mobile reports',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/show-day/index.html');await page.getByRole('button',{name:'当日記録を追加',exact:true}).click();await page.getByLabel('当日記録1の内容',{exact:true}).fill('パンフ販売');await page.getByLabel('当日記録1の日付',{exact:true}).fill(tokyoToday());await page.getByLabel('当日記録1の区分',{exact:true}).selectOption('goods');await page.getByLabel('当日記録1の物販数量',{exact:true}).fill('10');await page.getByLabel('当日記録1の物販単価（円）',{exact:true}).fill('500');assert.ok((await text(page)).includes('5,000円'));const saved=await stored(page);await page.getByLabel('当日記録1の物販単価（円）',{exact:true}).fill('0.5');assert.equal(await stored(page),saved);await page.getByLabel('当日記録1の物販単価（円）',{exact:true}).fill('500');const out=await downloadJSON(page,()=>page.getByRole('button',{name:'当日記録を書き出す',exact:true}).click());assert.ok(out.includes('10個 × 500円'));assert.deepEqual(JSON.parse(await stored(page)).project.modules.settlement.data.items,[]);await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/当日：パンフ販売/}).click();await page.waitForURL('**/modules/show-day/index.html?projectId=*#item-*');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 });
