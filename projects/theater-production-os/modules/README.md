@@ -1,7 +1,7 @@
 # モジュール一覧
 
 各モジュールはOSの子フォルダに置き、単体起動とOSからの起動の両方に対応する。
-予算・チラシ・配布・SNS・販売進捗・稽古・提出物・受付・決算・パンフ・舞台進行・劇場・作品／権利・当日運営を実装。他は計画。
+予算・チラシ・配布・SNS・販売進捗・稽古・提出物・受付・決算・パンフ・舞台進行・劇場・作品／権利・当日運営・アーカイブ・契約支払いを実装。他は計画。
 
 | ID | 役割 | 状態・予定 |
 | --- | --- | --- |
@@ -18,11 +18,11 @@
 | front-desk | 受付準備 | usable：OS MVP v0.4 |
 | show-day | 当日運営・物販記録 | usable：OS MVP v0.5 |
 | settlement | 決算 | usable：OS MVP v0.4 |
-| contracts | 契約・支払い | planned：拡張 |
+| contracts | 契約・支払い | usable：OS MVP v0.14 |
 | funding | 助成金・協賛・広告 | planned：拡張 |
 | travel | 交通・宿泊・ケータリング | planned：拡張 |
 | submissions | 申請・劇場提出物 | usable：OS MVP v0.3 |
-| performance-archive | 公演資料・実績・引継ぎ | planned：拡張 |
+| archive | 公演資料・実績・引継ぎ | usable：OS MVP v0.9 |
 
 公演マスター、カレンダー、ダッシュボードはOS側の機能。
 将来の電子チケット・QR受付は独立サブシステムとして別仕様で扱う。

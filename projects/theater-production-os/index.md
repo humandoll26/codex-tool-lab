@@ -1,6 +1,6 @@
 # 劇団制作OS — 設計の入口
 
-- 状態: **OS MVP v0.6実装済み（14モジュール・カレンダー・ダッシュボード、PR採用前）**
+- 状態: **OS MVP v0.14実装済み（16モジュール・カレンダー・ダッシュボード、PR採用前）**
 - プロジェクトID: `theater-production-os`
 - OS入口: `index.html`
 - 予算の単体入口: `modules/budget/index.html`
@@ -22,7 +22,7 @@
 公演マスター、共通保存、予算・料金・損益分岐を実装し、AC-01〜AC-12を検証済み。
 起動・テストはREADME、実測は検証記録、再開時の状況は [作業記録](artifacts/progress.md) を参照。
 [追加MVP仕様](docs/mvp-next.md)に基づき、チラシ・配布・SNS・販売進捗・カレンダー・逆算予定・ダッシュボードを実装。
-次はiPhone実機確認と、稽古・提出物等の後続モジュール。
+次はiPhone実機確認と、助成金等の後続モジュール。
 
 - [稽古・提出物の追加仕様](docs/mvp-v0.3.md)
 
@@ -43,3 +43,5 @@
 - [MVP v0.11 — モジュール単位のJSON](docs/mvp-v0.11.md)
 - [MVP v0.12 — 取込み上限・印刷用資料](docs/mvp-v0.12.md)
 - [MVP v0.13 — 項目を選べる共有用JSON資料](docs/mvp-v0.13.md)
+
+- [MVP v0.14 — 契約・支払い](docs/mvp-v0.14.md)

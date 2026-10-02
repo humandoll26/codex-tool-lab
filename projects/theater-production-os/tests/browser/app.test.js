@@ -302,7 +302,7 @@ test('SHARE-04: unsaved valid quota/conflict inputs share without clearing navig
   assert.ok((await conflict.getByLabel('共有するJSONの内容', { exact: true }).innerText()).includes('競合時の共有原稿'));
   await conflict.keyboard.press('Escape'); assert.equal(JSON.parse(await stored(conflict)).project.title, '別タブ更新');
 });
-test('SHARE-02/05: all 15 entrances explicitly export shared references with only the selected module', async t => {
+test('SHARE-02/05: all module entrances explicitly export shared references with only the selected module', async t => {
   const page = await setup(t, { saved: fullFixture() });
   for (const id of Object.keys(DEFINITIONS)) {
     await page.goto(origin + prefix + `modules/${id}/index.html`); const saved = await stored(page);
@@ -563,6 +563,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['venue', '会場CSVを書き出す', 'venue.csv'],
     ['rights', '作品概要を書き出す', 'rights.txt'],
     ['show-day', '当日記録を書き出す', 'show-day.txt'],
+    ['contracts', '契約CSVを書き出す', 'contracts.csv'],
     ['archive', '資料一覧CSVを書き出す', 'archive.csv']
   ]) {
     await page.goto(origin + prefix + `modules/${id}/index.html`);
@@ -585,7 +586,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     const packet = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'このモジュールのJSONを書き出す', exact: true }).click()));
     assert.deepEqual(Object.keys(packet.document.project.modules), [id]); assert.equal(packet.document.project.documents.length, 0);
   }
-  assert.equal(downloadCount, 35, 'only explicit export actions download files');
+  assert.equal(downloadCount, 37, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -710,7 +711,7 @@ test('UX-04: explicit copy writes preview text and denied clipboard falls back t
 
 test('UX-05: dashboard puts schedules first and filters modules without changing saved data',async t=>{
  const d=fullFixture();d.project.title='x'.repeat(500);d.project.modules.publicity.status='completed';d.project.modules.flyer.status='not-needed';
- const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'dashboard.html');const saved=await stored(page);const cards=page.locator('.module-card');assert.equal(await cards.count(),13);
+ const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'dashboard.html');const saved=await stored(page);const cards=page.locator('.module-card');assert.equal(await cards.count(),Object.keys(DEFINITIONS).length-2);
  const headings=await page.getByTestId('schedule').locator('h2').allTextContents();assert.ok(headings.indexOf('今日の予定')<headings.indexOf('制作モジュール'));
  const search=page.getByLabel('モジュールを検索',{exact:true});await search.pressSequentially('決算');assert.equal(await search.inputValue(),'決算');assert.equal(await search.evaluate(el=>el===document.activeElement),true);assert.equal(await cards.count(),1);assert.equal(await cards.locator('h3').innerText(),'決算');
  await search.fill('');await page.getByLabel('モジュールの表示状態',{exact:true}).selectOption('completed');assert.equal(await cards.count(),1);assert.equal(await cards.locator('h3').innerText(),'SNS・広報');await search.fill('該当なし');assert.equal(await cards.count(),0);assert.ok((await page.getByLabel('制作モジュールの一覧',{exact:true}).innerText()).includes('条件に合う'));
@@ -883,4 +884,40 @@ test('PACK-03: missing or invalid modules cannot export; quota and conflict pres
   const source = fullFixture(); source.project.modules.flyer.data.introduction = '取込後の未保存原稿'; const packet = moduleBackup(source, 'flyer');
   const quota = await setup(t, { saved: fullFixture(), failure: 'quota' }); await quota.goto(origin + prefix + 'modules/flyer/index.html'); const quotaSaved = await stored(quota); quota.once('dialog', dialog => dialog.accept()); await uploadModule(quota, packet); await waitForText(quota.getByRole('status'), '保存できません'); assert.equal(await stored(quota), quotaSaved); const backup = JSON.parse(await downloadJSON(quota, () => quota.getByRole('button', { name: 'JSONを書き出す', exact: true }).click())); assert.equal(backup.project.modules.flyer.data.introduction, '取込後の未保存原稿');
   const conflict = await setup(t, { saved: fullFixture() }); await conflict.goto(origin + prefix + 'modules/flyer/index.html'); await conflict.evaluate(key => { const d = JSON.parse(localStorage.getItem(key)); d.project.companyName = '別保存'; localStorage.setItem(key, JSON.stringify(d)); }, STORAGE_KEY); const latest = await stored(conflict); conflict.once('dialog', dialog => dialog.accept()); await uploadModule(conflict, packet); await waitForText(conflict.getByRole('status'), '別のタブなどで保存データが変わりました'); assert.equal(await stored(conflict), latest); assert.equal(await conflict.getByLabel('公演紹介文', { exact: true }).inputValue(), '');
+});
+
+test('CONTRACT-01/02/03: mobile contract dates protect saving, payment agenda links and cancellation history', async t => {
+  const d=fullFixture(), budgetBefore=structuredClone(d.project.modules.budget);
+  const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'modules/contracts/index.html');
+  await page.getByRole('button',{name:'契約を追加',exact:true}).click();await page.getByLabel('契約1の名称',{exact:true}).fill('架空の照明協力');
+  await page.getByLabel('契約1の担当役割',{exact:true}).fill('照明担当A');await page.getByLabel('契約1の金額（円）',{exact:true}).fill('30000');
+  await page.getByLabel('契約1の支払予定日',{exact:true}).fill(tokyoToday());
+  let saved=await stored(page);await page.getByLabel('契約1の金額（円）',{exact:true}).fill('-1');assert.equal(await stored(page),saved);
+  await page.getByLabel('契約1の金額（円）',{exact:true}).fill('30000');saved=await stored(page);await page.getByLabel('契約1の請求書状態',{exact:true}).selectOption('received');assert.equal(await stored(page),saved);
+  await page.getByLabel('契約1の請求書受領日',{exact:true}).fill(tokyoToday());saved=await stored(page);
+  await page.getByLabel('契約1の支払状態',{exact:true}).selectOption('paid');assert.equal(await stored(page),saved);
+  await page.getByLabel('契約1の支払日',{exact:true}).fill(tokyoToday());await page.reload();assert.equal(await page.getByLabel('契約1の支払状態',{exact:true}).inputValue(),'paid');
+  await page.getByLabel('契約1の契約状態',{exact:true}).selectOption('cancelled');assert.ok((await text(page)).includes('支払済み額（取消も含む）'));assert.ok((await text(page)).includes('30,000円'));
+  assert.deepEqual(JSON.parse(await stored(page)).project.modules.budget,budgetBefore);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.screenshot({path:'/tmp/os-contracts-mobile.png',fullPage:true});
+  await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');
+  await page.getByRole('link',{name:/契約支払：架空の照明協力/}).click();await page.waitForURL('**/modules/contracts/index.html?projectId=*#item-*');
+  assert.equal(await page.getByLabel('契約1の名称',{exact:true}).inputValue(),'架空の照明協力');
+});
+
+test('CONTRACT-04/05: explicit CSV and backup, private default sharing and no outside requests or executed input',async t=>{
+  const d=JSON.parse(await readFile(path.join(projectRoot,'samples/demo.json'),'utf8'));d.project.modules.contracts.data.items[0].name='=HOSTILE()';d.project.modules.contracts.data.items[0].notes='<img src=x onerror="window.contractBad=true">';
+  const page=await setup(t,{saved:d,width:375}),requests=[];page.on('request',r=>{if(!r.url().startsWith(origin+prefix))requests.push(r.url());});
+  let downloads=0;page.on('download',()=>downloads++);await page.goto(origin+prefix+'modules/contracts/index.html');assert.equal(downloads,0);const saved=await stored(page);
+  const out=await downloadJSON(page,()=>page.getByRole('button',{name:'契約CSVを書き出す',exact:true}).click());assert.ok(out.includes("'=HOSTILE()"));
+  const backup=JSON.parse(await downloadJSON(page,()=>page.getByRole('button',{name:'このモジュールのJSONを書き出す',exact:true}).click()));assert.equal(backup.moduleId,'contracts');
+  await page.getByRole('button',{name:'共有用資料を作成',exact:true}).click();const preview=page.getByLabel('共有するJSONの内容',{exact:true});assert.equal((await preview.innerText()).includes('HOSTILE'),false);
+  await page.getByRole('checkbox',{name:'作業データ（原稿・メモ・金額など）',exact:true}).check();assert.ok((await preview.innerText()).includes('HOSTILE'));
+  assert.equal(await page.locator('#main img').count(),0);assert.equal(await page.evaluate(()=>Boolean(window.contractBad)),false);assert.deepEqual(requests,[]);assert.equal(await stored(page),saved);
+});
+
+test('CONTRACT-01: legacy contract extension is kept and never silently initialized',async t=>{
+  const d=fullFixture();d.project.modules.contracts={id:'contracts',status:'in-progress',startDate:null,dueDate:null,progress:0,alerts:[],data:{privateLegacy:'keep'}};
+  const page=await setup(t,{saved:d});await page.goto(origin+prefix+'modules/contracts/index.html');assert.equal(await page.getByRole('button',{name:'契約を追加',exact:true}).count(),0);
+  assert.deepEqual(JSON.parse(await stored(page)).project.modules.contracts.data,{privateLegacy:'keep'});
 });
