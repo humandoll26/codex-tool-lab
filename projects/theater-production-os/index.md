@@ -33,3 +33,5 @@
 - [操作改善と予算出力](docs/mvp-v0.6.md)
 
 - [MVP v0.7 — カレンダー書き出し](docs/mvp-v0.7.md)
+
+- [MVP v0.8 — 公演収支・実績レポート](docs/mvp-v0.8.md)

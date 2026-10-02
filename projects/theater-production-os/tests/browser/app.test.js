@@ -415,6 +415,8 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['submissions', '提出物CSVを書き出す', 'submissions.csv'],
     ['front-desk', '受付CSVを書き出す', 'front-desk.csv'],
     ['settlement', '決算CSVを書き出す', 'settlement.csv'],
+    ['settlement', '収支・実績レポートを書き出す', 'production-report.txt'],
+    ['settlement', '収支・実績レポートCSVを書き出す', 'production-report.csv'],
     ['program', 'パンフ掲載文を書き出す', 'program.txt'],
     ['stage-operations', '舞台進行表を書き出す', 'stage-operations.txt'],
     ['venue', '会場CSVを書き出す', 'venue.csv'],
@@ -436,7 +438,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     const file = await waiting; assert.equal(file.suggestedFilename(), filename);
     const output = await readFile(await file.path(), 'utf8'); assert.ok(output.includes('<img'));
   }
-  assert.equal(downloadCount, 17, 'only explicit export actions download files');
+  assert.equal(downloadCount, 19, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -608,4 +610,29 @@ test('CAL-04/05: week and today filters, empty results and malformed legacy time
   page.once('dialog', dialog => dialog.accept()); await upload(page, bad); await waitForText(page.getByRole('status'), 'JSONを取り込み、保存しました'); const legacySaved = await stored(page);
   await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today'); await page.getByLabel('予定のモジュールフィルタ', { exact: true }).selectOption('project'); await page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('書き出せませんでした')); assert.equal(downloads, 0); assert.equal(await stored(page), legacySaved);
   await page.getByLabel('予定1の名称', { exact: true }).fill(''); assert.equal(await page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).count(), 0); assert.equal(await stored(page), legacySaved);
+});
+
+test('REPORT-01/02/04: settlement preview, copy and report downloads follow edits and separate actual from reference sales', async t => {
+  const d = JSON.parse(await readFile(path.join(projectRoot, 'samples/demo.json'), 'utf8'));
+  const page = await setup(t, { saved: d, width: 375 }); await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
+  await page.goto(origin + prefix + 'modules/settlement/index.html');
+  const preview = page.locator('.text-preview'); assert.ok((await preview.innerText()).includes('決算 · 実収入：150,000円')); assert.ok((await preview.innerText()).includes('販売実績 · 実績販売枚数：55枚'));
+  const saved = await stored(page);
+  const output = await downloadJSON(page, () => page.getByRole('button', { name: '収支・実績レポートを書き出す', exact: true }).click()); assert.ok(output.includes('予算との差 · 実収入−想定売上：-330,000円'));
+  const csv = await downloadJSON(page, () => page.getByRole('button', { name: '収支・実績レポートCSVを書き出す', exact: true }).click()); assert.ok(csv.includes('"-330000"')); assert.equal(await stored(page), saved);
+  await page.getByRole('button', { name: '原稿をコピー', exact: true }).click(); await waitForText(page.getByRole('status'), '原稿をコピーしました'); assert.equal(await page.evaluate(() => navigator.clipboard.readText()), output);
+  await page.getByLabel('決算明細1の金額（円）', { exact: true }).fill('200000'); assert.ok((await preview.innerText()).includes('決算 · 実収入：200,000円'));
+  await page.getByText('公演情報を作成・編集する', { exact: true }).click(); await page.getByLabel('料金区分1の料金（円）', { exact: true }).fill('4000');
+  assert.ok((await preview.innerText()).includes('決算 · 実収入：200,000円')); assert.ok((await preview.innerText()).includes('現行料金によるチケット参考売上：220,000円')); assert.ok((await preview.innerText()).includes('想定売上：640,000円'));
+  assert.equal(JSON.parse(await stored(page)).project.modules['show-day'].data.items[0].quantity, 10); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const valid = await stored(page); let downloads = 0; page.on('download', () => downloads++);
+  await page.getByLabel('決算明細1の入出金済み額（円）', { exact: true }).fill('200001'); await page.getByRole('button', { name: '収支・実績レポートを書き出す', exact: true }).click(); assert.equal(downloads, 0); assert.equal(await stored(page), valid); assert.equal(await preview.count(), 0);
+});
+
+test('REPORT-03/04/05: empty settlement and legacy references remain explicit and hostile report text stays inert', async t => {
+  const d = fullFixture(); delete d.project.modules.budget; delete d.project.modules['show-day']; d.project.modules.tickets.data = { legacySales: 'retain' };
+  d.project.title = '<script>window.reportExecuted=true</script>';
+  const page = await setup(t, { saved: d, width: 375 }); await page.goto(origin + prefix + 'modules/settlement/index.html'); const saved = await stored(page);
+  const out = await downloadJSON(page, () => page.getByRole('button', { name: '収支・実績レポートを書き出す', exact: true }).click()); assert.ok(out.includes('入力済み決算明細：0件')); assert.ok(out.includes('旧形式のため集計対象外')); assert.ok(out.includes('予算 · 比較：未入力')); assert.ok(out.includes('当日記録 · 集計：未入力'));
+  assert.ok((await page.locator('.text-preview').innerText()).includes('<script>')); assert.equal(await page.evaluate(() => Boolean(window.reportExecuted)), false); assert.equal(await page.locator('#main script').count(), 0); assert.equal(await stored(page), saved);
 });
