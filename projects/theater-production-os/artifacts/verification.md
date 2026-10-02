@@ -147,3 +147,16 @@ npm testは125件、npm run test:browserは31件成功。失敗・取消・ス�
 - FINAL-05: 375pxの入力・行リンク・再読込、全17入口で悪性文字列の実行・外部通信・自動ダウンロードなし。13モジュールの書出し＋JSONの手動14ダウンロードを確認。
 
 追加7画面は375pxでdocument幅375pxを実測し、入力画面を目視確認。画面はfront-desk-mobile.png、settlement-mobile.png、program-mobile.png、stage-operations-mobile.png、venue-mobile.png、rights-mobile.png、show-day-mobile.pngに保存。Safari・実機iPhone・公開URLの応答・Google警告解除は未確認。
+
+## 2026-10-02 — MVP v0.6検証
+
+npm testは129件、npm run test:browserは39件成功。失敗・取消・スキップ・todo各0。Node.js 24／Chromium 151／Playwright 1.63.0。専用HTTPサーバーと架空データを使用。
+
+- UX-01: モジュール切替で公演IDと保存値を保持。不正入力・容量不足の保存失敗では移動を拒否して選択を戻す。
+- UX-02: 正常画面には他モジュールの入力なし。席数減少でチケット修復フォームを生成し、その場で修正・保存。入力フォーカス維持と再読込後の修復フォーム非表示を確認。
+- UX-03: 月の日選択と解除、モジュール絞り込み、表示範囲変更時の解除成功。375pxで横溢れなし。
+- UX-04: 原稿の入力追随とHTML文字列の非実行、クリップボードの成功・拒否時の手動選択を確認。全17入口で外部通信・GET以外の送信・自動ダウンロード0。15形式の明示ダウンロード成功。
+- UX-05: 予定がカード一覧より前に表示。名称検索／状態絞り込みでフォーカス維持、保存JSON不変。500文字の公演名でも375px横溢れなし。
+- UX-06: サンプルの想定160人・売上480000円・費用180000円・収支300000円・販売率80％・基準料金での損益分岐40人が原稿／CSVと一致。現在の価格を反映し、数式風の文字列を無害化。負の収支は数値を維持。不正入力／予算未入力では書き出さない。
+
+[カレンダー](calendar-v0.6-mobile.png)、[モジュール一覧](dashboard-v0.6-mobile.png)、[予算原稿](budget-v0.6-mobile.png)を375pxで撮影・目視確認。公開URL・Safari・iPhone実機・Google警告解除は未確認。

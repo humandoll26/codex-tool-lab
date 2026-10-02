@@ -406,6 +406,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
   }
   assert.equal(downloadCount, 0, 'visiting pages does not initiate downloads');
   for (const [id, label, filename] of [
+    ['budget', '予算CSVを書き出す', 'budget.csv'],
     ['flyer', '掲載情報を書き出す', 'flyer.txt'],
     ['distribution', '配布CSVを書き出す', 'distribution.csv'],
     ['publicity', '投稿計画CSVを書き出す', 'publicity.csv'],
@@ -427,7 +428,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
   }
   const exported = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click()));
   assert.equal(exported.project.title, payload);
-  assert.equal(downloadCount, 14, 'only explicit export actions download files');
+  assert.equal(downloadCount, 15, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -519,4 +520,51 @@ test('FINAL-01/03/05: rights evidence/date validation, outline export and saved 
 });
 test('FINAL-01/04/05: show-day goods revenue, errors and chronological mobile reports',async t=>{
  const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+prefix+'modules/show-day/index.html');await page.getByRole('button',{name:'当日記録を追加',exact:true}).click();await page.getByLabel('当日記録1の内容',{exact:true}).fill('パンフ販売');await page.getByLabel('当日記録1の日付',{exact:true}).fill(tokyoToday());await page.getByLabel('当日記録1の区分',{exact:true}).selectOption('goods');await page.getByLabel('当日記録1の物販数量',{exact:true}).fill('10');await page.getByLabel('当日記録1の物販単価（円）',{exact:true}).fill('500');assert.ok((await text(page)).includes('5,000円'));const saved=await stored(page);await page.getByLabel('当日記録1の物販単価（円）',{exact:true}).fill('0.5');assert.equal(await stored(page),saved);await page.getByLabel('当日記録1の物販単価（円）',{exact:true}).fill('500');const out=await downloadJSON(page,()=>page.getByRole('button',{name:'当日記録を書き出す',exact:true}).click());assert.ok(out.includes('10個 × 500円'));assert.deepEqual(JSON.parse(await stored(page)).project.modules.settlement.data.items,[]);await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/当日：パンフ販売/}).click();await page.waitForURL('**/modules/show-day/index.html?projectId=*#item-*');assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+
+test('UX-01: module picker keeps project ID and blocks invalid edits and unsaved storage',async t=>{
+ const page=await setup(t,{saved:fullFixture(),width:375});await page.goto(origin+budget);const id=JSON.parse(await stored(page)).project.id;
+ await page.getByLabel('作業モジュール',{exact:true}).selectOption('settlement');await page.waitForURL(`**/modules/settlement/index.html?projectId=${id}`);
+ await page.getByRole('button',{name:'決算明細を追加',exact:true}).click();await page.getByLabel('作業モジュール',{exact:true}).selectOption('venue');assert.ok(page.url().includes('/settlement/'));assert.equal(await page.getByLabel('作業モジュール',{exact:true}).inputValue(),'settlement');
+ await page.getByLabel('決算明細1の名称',{exact:true}).fill('会場費');await page.getByLabel('作業モジュール',{exact:true}).selectOption('venue');await page.waitForURL(`**/modules/venue/index.html?projectId=${id}`);
+ const failed=await setup(t,{saved:fullFixture(),failure:'quota'});await failed.goto(origin+budget);await failed.getByLabel('来場者1人当たりの変動費（円）',{exact:true}).fill('600');await failed.getByLabel('作業モジュール',{exact:true}).selectOption('rights');assert.ok(failed.url().includes('/budget/'));assert.equal(await failed.getByLabel('作業モジュール',{exact:true}).inputValue(),'budget');
+});
+test('UX-02: other editors are created only for errors and remain usable while repairing',async t=>{
+ const d=fullFixture();d.project.modules.tickets.data.sales.push({stageId:'stage-1',priceCategoryId:'general',quantity:25});
+ const page=await setup(t,{saved:d});await page.goto(origin+budget);assert.equal(await page.getByTestId('module-repairs').locator('input').count(),0);const saved=await stored(page);
+ await page.getByText('公演情報を作成・編集する',{exact:true}).click();await page.getByLabel('ステージ1の販売可能席数',{exact:true}).fill('20');assert.equal(await stored(page),saved);
+ assert.equal(await page.locator('[data-repair-module=tickets]').count(),1);await page.getByLabel('ステージ1・一般の想定販売枚数',{exact:true}).fill('20');await page.getByLabel('ステージ1・一般の実績販売枚数',{exact:true}).fill('20');assert.equal(JSON.parse(await stored(page)).project.performanceDates[0].capacity,20);
+ assert.equal(await page.locator('[data-repair-module=tickets]').count(),1);await page.reload();assert.equal(await page.getByTestId('module-repairs').locator('input').count(),0);
+});
+test('UX-03: mobile month day selection, module filtering and resetting month/scope',async t=>{
+ const d=fullFixture();d.project.modules.publicity.data.items.push({id:'day1',title:'前日の投稿',channel:'SNS',date:'2026-10-10',text:'',materials:'',status:'draft'},{id:'day2',title:'選んだ日の投稿',channel:'SNS',date:'2026-10-11',text:'',materials:'',status:'draft'});
+ const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'calendar.html');await page.getByLabel('表示する月',{exact:true}).fill('2026-10');await page.getByRole('button',{name:'2026-10-11の予定を表示',exact:true}).click();const agenda=page.locator('.agenda-list');assert.ok((await agenda.innerText()).includes('選んだ日の投稿'));assert.equal((await agenda.innerText()).includes('前日の投稿'),false);
+ await page.getByLabel('予定のモジュールフィルタ',{exact:true}).selectOption('flyer');assert.ok((await page.getByLabel('制作カレンダー',{exact:true}).innerText()).includes('予定はありません'));await page.getByLabel('予定のモジュールフィルタ',{exact:true}).selectOption('publicity');await page.getByRole('button',{name:'月全体の予定に戻す',exact:true}).click();assert.ok((await agenda.innerText()).includes('前日の投稿'));
+ await page.getByRole('button',{name:'2026-10-11の予定を表示',exact:true}).click();await page.getByLabel('表示する月',{exact:true}).fill('2026-11');assert.equal(await page.getByRole('button',{name:'月全体の予定に戻す',exact:true}).count(),0);await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('week');assert.equal(await page.getByRole('button',{name:'月全体の予定に戻す',exact:true}).count(),0);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+test('UX-04: live preview updates hostile text as text without downloading',async t=>{
+ const page=await setup(t,{saved:fullFixture()});await page.goto(origin+prefix+'modules/front-desk/index.html');let downloads=0;page.on('download',()=>downloads++);const payload='<img src=x onerror="window.bad=true">';await page.getByLabel('当日案内文',{exact:true}).fill(payload);assert.ok((await page.locator('.text-preview').innerText()).includes(payload));assert.equal(await page.locator('#main img').count(),0);assert.equal(await page.evaluate(()=>Boolean(window.bad)),false);assert.equal(downloads,0);
+});
+
+test('UX-04: explicit copy writes preview text and denied clipboard falls back to selection',async t=>{
+ const page=await setup(t,{saved:fullFixture()});await page.context().grantPermissions(['clipboard-read','clipboard-write'],{origin});await page.goto(origin+prefix+'modules/front-desk/index.html');await page.getByLabel('当日案内文',{exact:true}).fill('コピー確認用の架空案内');await page.getByRole('button',{name:'原稿をコピー',exact:true}).click();await waitForText(page.getByRole('status'),'原稿をコピーしました');assert.ok((await page.evaluate(()=>navigator.clipboard.readText())).includes('コピー確認用の架空案内'));
+ await page.evaluate(()=>Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:()=>Promise.reject(new Error('denied'))}}));await page.getByRole('button',{name:'原稿をコピー',exact:true}).click();await waitForText(page.getByRole('status'),'自動コピーを利用できません');assert.ok((await page.evaluate(()=>window.getSelection().toString())).includes('コピー確認用の架空案内'));
+});
+
+test('UX-05: dashboard puts schedules first and filters modules without changing saved data',async t=>{
+ const d=fullFixture();d.project.title='x'.repeat(500);d.project.modules.publicity.status='completed';d.project.modules.flyer.status='not-needed';
+ const page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'dashboard.html');const saved=await stored(page);const cards=page.locator('.module-card');assert.equal(await cards.count(),12);
+ const headings=await page.getByTestId('schedule').locator('h2').allTextContents();assert.ok(headings.indexOf('今日の予定')<headings.indexOf('制作モジュール'));
+ const search=page.getByLabel('モジュールを検索',{exact:true});await search.pressSequentially('決算');assert.equal(await search.inputValue(),'決算');assert.equal(await search.evaluate(el=>el===document.activeElement),true);assert.equal(await cards.count(),1);assert.equal(await cards.locator('h3').innerText(),'決算');
+ await search.fill('');await page.getByLabel('モジュールの表示状態',{exact:true}).selectOption('completed');assert.equal(await cards.count(),1);assert.equal(await cards.locator('h3').innerText(),'SNS・広報');await search.fill('該当なし');assert.equal(await cards.count(),0);assert.ok((await page.getByLabel('制作モジュールの一覧',{exact:true}).innerText()).includes('条件に合う'));
+ assert.equal(await stored(page),saved);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+});
+
+test('UX-06: budget preview, text and CSV exports reject invalid input and follow prices',async t=>{
+ const page=await setup(t,{saved:fullFixture()});await page.goto(origin+budget);const csv=await downloadJSON(page,()=>page.getByRole('button',{name:'予算CSVを書き出す',exact:true}).click());assert.ok(csv.includes('480000'));const out=await downloadJSON(page,()=>page.getByRole('button',{name:'予算テキストを書き出す',exact:true}).click());assert.ok(out.includes('300,000円'));assert.ok((await page.locator('.text-preview').innerText()).includes('実績販売・実収入ではありません'));
+ let downloads=0;page.on('download',()=>downloads++);const saved=await stored(page);await page.getByLabel('ステージ1・一般の想定販売枚数',{exact:true}).fill('101');await page.getByRole('button',{name:'予算CSVを書き出す',exact:true}).click();assert.equal(downloads,0);assert.equal(await stored(page),saved);await page.getByLabel('ステージ1・一般の想定販売枚数',{exact:true}).fill('80');
+});
+
+test('UX-06: a valid imported project without budget prompts for input instead of crashing on export',async t=>{
+ const d=fullFixture();delete d.project.modules.budget;const page=await setup(t,{saved:d});await page.goto(origin+budget);const saved=await stored(page);await page.getByRole('button',{name:'予算CSVを書き出す',exact:true}).click();assert.ok((await page.getByRole('status').innerText()).includes('予算の入力を開始'));assert.equal(await stored(page),saved);
 });

@@ -18,14 +18,16 @@ export function calendarOverview(ctx, state) {
     el('option', { value: '' }, 'すべてのモジュール'), el('option', { value: 'project' }, '公演情報'),
     Object.entries(DEFINITIONS).map(([id, def]) => el('option', { value: id }, def.name)));
   moduleSelect.value = state.module;
-  const scope = el('select', { 'aria-label': '予定の表示範囲', onChange: e => { state.scope = e.target.value; render(); } },
+  const scope = el('select', { 'aria-label': '予定の表示範囲', onChange: e => { state.scope = e.target.value; state.selectedDate = null; render(); } },
     [['month', '月間'], ['week', '今週'], ['today', '今日']].map(([value, label]) => el('option', { value }, label)));
   scope.value = state.scope;
-  const month = el('input', { type: 'month', value: state.month, 'aria-label': '表示する月', onChange: e => { if (e.target.value) { state.month = e.target.value; render(); } } });
+  const month = el('input', { type: 'month', value: state.month, 'aria-label': '表示する月', onChange: e => { if (e.target.value) { state.month = e.target.value; state.selectedDate = null; render(); } } });
   card.append(el('div', { className: 'grid' }, el('label', { className: 'field' }, '表示する月', month), el('label', { className: 'field' }, '表示範囲', scope), el('label', { className: 'field' }, 'モジュール', moduleSelect)));
   const week = weekRange(today);
-  const selected = all.filter(e => (!state.module || e.moduleId === state.module) && (state.scope === 'today' ? e.date === today : state.scope === 'week' ? e.date >= week.start && e.date <= week.end : e.date.startsWith(state.month)));
-  card.append(el('p', { className: 'hint' }, `日本時間の今日：${today} · ${selected.length}件`));
+  const inRange = all.filter(e => (!state.module || e.moduleId === state.module) && (state.scope === 'today' ? e.date === today : state.scope === 'week' ? e.date >= week.start && e.date <= week.end : e.date.startsWith(state.month)));
+  const selected = state.scope === 'month' && state.selectedDate ? inRange.filter(e => e.date === state.selectedDate) : inRange;
+  card.append(el('p', { className: 'hint' }, `日本時間の今日：${today} · ${state.selectedDate ? state.selectedDate + 'の予定 · ' : ''}${selected.length}件`));
+  if (state.scope === 'month' && state.selectedDate) card.append(button('月全体の予定に戻す', () => { state.selectedDate = null; render(); }));
   if (state.scope === 'month') {
     const [year, monthNumber] = state.month.split('-').map(Number);
     const count = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
@@ -35,8 +37,10 @@ export function calendarOverview(ctx, state) {
     for (let i = 0; i < (first + 6) % 7; i++) grid.append(el('div', { className: 'calendar-empty', 'aria-hidden': 'true' }));
     for (let day = 1; day <= count; day++) {
       const date = `${state.month}-${String(day).padStart(2, '0')}`;
-      const dayEvents = selected.filter(e => e.date === date);
-      grid.append(el('div', { className: `calendar-day ${date === today ? 'today' : ''}` }, el('strong', {}, String(day)),
+      const dayEvents = inRange.filter(e => e.date === date);
+      grid.append(el('div', { className: `calendar-day ${date === today ? 'today' : ''} ${date === state.selectedDate ? 'selected' : ''}` },
+        el('button', { type: 'button', className: 'day-select', 'aria-label': `${date}の予定を表示`, 'aria-pressed': date === state.selectedDate ? 'true' : 'false', onClick: () => { state.selectedDate = date; render(); } }, String(day)),
+        dayEvents.length ? el('span', { className: 'day-count' }, `${dayEvents.length}件`) : null,
         ...dayEvents.map(event => {
           const target = event.moduleId === 'project' ? 'index.html' : Object.hasOwn(DEFINITIONS, event.moduleId) ? `modules/${event.moduleId}/index.html` : null;
           return target ? ctx.projectLink(event.title, target, event.relatedItemId ? `#item-${encodeURIComponent(event.relatedItemId)}` : '') : el('span', {}, event.title);
