@@ -2,9 +2,9 @@
 
 更新: 2026-10-02。対象はprojects/theater-production-os/だけ。
 
-## 最新の依頼：MVP実装の再開
+## 最新の依頼：MVP実装の継続
 
-ユーザーの「再開」により、MVP v0.13の共有用JSON資料を実装。公演名と対象進行だけの初期値、共通/作業データの選択、文字プレビュー/明示出力、共有資料の誤取込み拒否を追加。単体179件・ブラウザ68件成功。ソース/配信をpushし、配信68ファイルの一致と追加監査5件も確認。[検証記録](verification.md)、[追加仕様](../docs/mvp-v0.13.md)を読む。
+ユーザーの「実装を進めて」により、原本6章Bの契約・支払いを16番目の子フォルダcontractsへ追加。契約状態・役割・金額・請求書受領・支払予定／済みと対応日付を管理し、予定／ダッシュボード・CSV・専用JSON・共有資料へ接続した。取消後も支払済み記録を残す。決済・税務・決算への自動転記は追加しない。単体182件・ブラウザ71件成功。ソース／配信をpushし、配信71ファイルの一致・19入口の版表示と配信ツリーで追加監査5件も確認。[検証記録](verification.md)、[追加仕様](../docs/mvp-v0.14.md)を読む。
 
 ## 前回の依頼：セキュリティ監査
 
@@ -14,9 +14,9 @@
 
 ## 現在の実装
 
-OS MVP v0.13。15モジュールを子フォルダに配置し、共通マスター・保存・予定・ダッシュボードへ接続済み。
+OS MVP v0.14。16モジュールを子フォルダに配置し、共通マスター・保存・予定・ダッシュボードへ接続済み。
 
-budget / flyer / distribution / publicity / tickets / rehearsal / submissions / front-desk / settlement / program / stage-operations / venue / rights / show-day / archive。
+budget / flyer / distribution / publicity / tickets / rehearsal / submissions / front-desk / settlement / program / stage-operations / venue / rights / show-day / archive / contracts。
 
 - 入力・状態・期限、JSONバックアップ、逆算予定、月の日選択、一覧検索・モジュール切替。
 - テキスト／CSV、原稿コピー、予定ICS、収支・販売実績レポート、資料所在と反省／引継ぎ、保存時点の収支原稿。
@@ -24,21 +24,22 @@ budget / flyer / distribution / publicity / tickets / rehearsal / submissions / 
 - 同じ公演IDへのモジュール専用JSON。対象の入力・予定だけを置換し、マスター・他モジュール・documentsを保持。
 - 受付資料と舞台進行表の印刷プレビュー/ブラウザPDF保存。現在の妥当な画面入力から作成し、戻ると編集を継続できる。
 - JSONの容量・深さ・値数・配列長、ステージ×料金セル数の上限。過大な入力を無断で置換せず、元保存値の復旧出力を維持。
+- 契約・支払いの契約状態／金額／請求書／支払日。支払予定を集約し、会計確定・決済や決算への自動転記は行わない。
 - 項目を選べる閲覧用の共有JSON資料。初期出力は公演名/進行だけ。作業データは選択した既知項目だけを出し、未知拡張を除外。全体/専用JSONへの誤取込みは拒否。
 
-[README](../README.md)、[検証結果](verification.md)、[詳細履歴](progress.md)、[原本転記](../docs/specs/theater-production-os-spec-v0.1.md)、[最新追加仕様](../docs/mvp-v0.13.md)を読む。初回TASKはPR採用前の履歴として保持。原本転記は変更していない。
+[README](../README.md)、[検証結果](verification.md)、[詳細履歴](progress.md)、[原本転記](../docs/specs/theater-production-os-spec-v0.1.md)、[最新追加仕様](../docs/mvp-v0.14.md)を読む。初回TASKはPR採用前の履歴として保持。原本転記は変更していない。
 
 ## Gitと配信
 
 - ソースブランチ: tool/theater-production-os/budget-mvp
-- 最新実装: 11ba135feed76147315384ee558831178e40d55e
-- 配信: 071a1532e5f210ff68e109bde7512c9a7553a2af（gh-pages）
-- 配信はコミット済みの68アプリファイル＋.nojekyll。テスト・文書・出力例PDF/画像・node_modulesは含めない。
+- 最新実装: 612d97532c77bf0b3a5eae2a49d172ae42abe603
+- 配信: 44e46ccf81a662aad1ac90b681e87ee8932fa317（gh-pages）
+- 配信はコミット済みの71アプリファイル＋.nojekyll。テスト・文書・出力例PDF/画像・node_modulesは含めない。
 - mainへのマージ・実装PR作成はしていない。公開URLのHTTP応答はクラウドの接続制約で未確認。
 
 開始時はgit statusと現在のブランチを確認する。文書だけの後続コミットがある場合、上記の実装とアプリは同じ。
 
-確認URL: https://humandoll26.github.io/codex-tool-lab/?v=0.13 。共有資料は `/modules/flyer/index.html?v=0.13` 等の各入口で「共有用資料を作成」を押す。Pagesの実際のHTTP応答とGoogle警告解除は未確認。画面にMVP v0.13が出ることを確認する。
+確認URL: https://humandoll26.github.io/codex-tool-lab/?v=0.14 。共有資料は `/modules/contracts/index.html?v=0.14` 等の各入口で「共有用資料を作成」を押す。Pagesの実際のHTTP応答とGoogle警告解除は未確認。画面にMVP v0.14が出ることを確認する。
 
 ## 再現できる検証
 
@@ -51,14 +52,14 @@ npm run test:browser
 python3 -m http.server 8765 --bind 127.0.0.1
 ```
 
-v0.13の全体実行は単体179件・ブラウザ68件成功。全18入口・既存35書出しの通信検証と監査用5件、新しい15共有出力も含む。架空データと独立したHTTPサーバーで検証。v0.12で確認した印刷2種類のA4 PDF、受付45行/3ページの全行保持も記録。再実行は変更・不具合・新しい未確認事項がある場合に行う。
+v0.14の全体実行は単体182件・ブラウザ71件成功。全19入口・明示37書出しの通信検証と監査用5件、16共有出力も含む。架空データと独立したHTTPサーバーで検証。v0.12で確認した印刷2種類のA4 PDF、受付45行/3ページの全行保持も記録。再実行は変更・不具合・新しい未確認事項がある場合に行う。
 
 ## 継続条件と未完事項
 
 ユーザーの指示は「5時間枠の残量が30％になるまで継続」。ツールに残量の読取手段がなく、30％到達とは判断していない。現在の割合を非同期で質問したが、回答はまだない。ここに記載した実装・検証・コミットは完了している。
 
-次の実装候補は、原本6章Bの契約・支払いの簡易作業管理。担当役割/契約状態/金額/請求書受領/支払予定・済みを最小化し、決済・源泉徴収計算・決算への自動転記は追加しない。追加範囲/受入条件を先に記録する。販売用配布物はライセンス/同梱範囲が未定義で、現在の子フォルダは共通コードを参照する独立入口。
+次の実装候補は、原本6章Cの助成金・協賛・広告の簡易作業管理。候補・申請締切・採択額・報告期限と協賛／広告枠・入稿・入金を最小化する。申請や送金の実行・銀行接続・決算への自動転記は追加しない。追加範囲と受入条件を先に記録する。販売用配布物はライセンス／同梱範囲が未定義で、現在の子フォルダは共通コードを参照する独立入口。
 
-残件: Google危険サイト警告の原因特定と解除、Safari／iPhone実機、暦アプリへの実機取込、販売用配布物・ライセンス、契約・助成金等の後続モジュール。実ファイル保管・クラウド同期・共同編集・決済・税務・個人名簿は未実装。Googleへの報告や警告回避はしていない。警告の詳細は[safe-browsing-investigation.md](safe-browsing-investigation.md)。
+残件: Google危険サイト警告の原因特定と解除、Safari／iPhone実機、暦アプリへの実機取込、販売用配布物・ライセンス、助成金等の後続モジュール。実ファイル保管・クラウド同期・共同編集・決済・税務・個人名簿は未実装。Googleへの報告や警告回避はしていない。警告の詳細は[safe-browsing-investigation.md](safe-browsing-investigation.md)。
 
 保存キーはcodex-tool-lab:theater-production-os:v1、schemaVersion:1。サンプル試用は公演全体を置換する確認付き。実データを使う前には全公演JSONを書き出し、モジュールJSONと混同しない。
