@@ -428,7 +428,15 @@ test('local security checks: all entrances keep hostile text inert, make no exte
   }
   const exported = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click()));
   assert.equal(exported.project.title, payload);
-  assert.equal(downloadCount, 15, 'only explicit export actions download files');
+  await page.goto(origin + prefix + 'calendar.html');
+  await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today');
+  for (const [format, filename] of [['ICS', 'production-calendar.ics'], ['CSV', 'production-calendar.csv']]) {
+    const waiting = page.waitForEvent('download');
+    await page.getByRole('button', { name: `表示中の予定を${format}で書き出す`, exact: true }).click();
+    const file = await waiting; assert.equal(file.suggestedFilename(), filename);
+    const output = await readFile(await file.path(), 'utf8'); assert.ok(output.includes('<img'));
+  }
+  assert.equal(downloadCount, 17, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -567,4 +575,37 @@ test('UX-06: budget preview, text and CSV exports reject invalid input and follo
 
 test('UX-06: a valid imported project without budget prompts for input instead of crashing on export',async t=>{
  const d=fullFixture();delete d.project.modules.budget;const page=await setup(t,{saved:d});await page.goto(origin+budget);const saved=await stored(page);await page.getByRole('button',{name:'予算CSVを書き出す',exact:true}).click();assert.ok((await page.getByRole('status').innerText()).includes('予算の入力を開始'));assert.equal(await stored(page),saved);
+});
+
+test('CAL-04/05: calendar exports current month, selected day and module without changing project data', async t => {
+  const d = fullFixture();
+  d.project.modules.rehearsal.data.items.push({ id: 'calendar-rehearsal', name: '書き出し稽古', date: '2026-11-30', startTime: '13:00', endTime: '17:00', venue: '稽古室', participants: '', attendance: '', staff: '', notes: '', message: '', status: 'planned', history: [] });
+  d.project.modules.publicity.data.items.push({ id: 'calendar-post', title: '前日の投稿', channel: 'SNS', date: '2026-11-29', text: '', materials: '', status: 'draft' });
+  const page = await setup(t, { saved: d, width: 375 });
+  await page.goto(origin + prefix + 'calendar.html');
+  await page.getByLabel('表示する月', { exact: true }).fill('2026-11');
+  const saved = await stored(page);
+  const exportICS = () => downloadJSON(page, () => page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).click());
+  const month = (await exportICS()).replace(/\r\n[ \t]/g, ''); assert.ok(month.includes('前日の投稿')); assert.ok(month.includes('書き出し稽古'));
+  await page.getByRole('button', { name: '2026-11-30の予定を表示', exact: true }).click();
+  const day = (await exportICS()).replace(/\r\n[ \t]/g, ''); assert.equal(day.includes('前日の投稿'), false); assert.ok(day.includes('DTEND:20261130T080000Z'));
+  await page.getByLabel('予定のモジュールフィルタ', { exact: true }).selectOption('rehearsal');
+  const only = (await exportICS()).replace(/\r\n[ \t]/g, ''); assert.equal((only.match(/^BEGIN:VEVENT$/gm) ?? []).length, 1); assert.equal(only.includes('本番：'), false);
+  const csv = await downloadJSON(page, () => page.getByRole('button', { name: '表示中の予定をCSVで書き出す', exact: true }).click()); assert.ok(csv.includes('"13:00","17:00"')); assert.ok(csv.includes('稽古室'));
+  assert.equal(await stored(page), saved); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+});
+
+test('CAL-04/05: week and today filters, empty results and malformed legacy times preserve saved data', async t => {
+  const d = fullFixture(), today = tokyoToday();
+  d.project.calendarEvents.push({ dataVersion: 1, id: 'calendar-today', projectId: d.project.id, moduleId: 'project', title: '今日の作業', date: today, status: 'planned', type: 'manual', relatedItemId: null });
+  d.project.calendarEvents.push({ dataVersion: 1, id: 'calendar-later', projectId: d.project.id, moduleId: 'project', title: '来週以降', date: addDays(today, 8), status: 'planned', type: 'manual', relatedItemId: null });
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'calendar.html'); const saved = await stored(page);
+  const exportICS = () => downloadJSON(page, () => page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).click());
+  for (const scope of ['today', 'week']) { await page.getByLabel('予定の表示範囲', { exact: true }).selectOption(scope); const output = (await exportICS()).replace(/\r\n[ \t]/g, ''); assert.ok(output.includes('今日の作業')); assert.equal(output.includes('来週以降'), false); }
+  let downloads = 0; page.on('download', () => downloads++);
+  await page.getByLabel('予定のモジュールフィルタ', { exact: true }).selectOption('rights'); await page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('予定がありません')); assert.equal(downloads, 0); assert.equal(await stored(page), saved);
+  const bad = structuredClone(d); bad.project.calendarEvents.push({ id: 'legacy-time', projectId: d.project.id, moduleId: 'project', title: '旧予定', date: today, time: '99:99' });
+  page.once('dialog', dialog => dialog.accept()); await upload(page, bad); await waitForText(page.getByRole('status'), 'JSONを取り込み、保存しました'); const legacySaved = await stored(page);
+  await page.getByLabel('予定の表示範囲', { exact: true }).selectOption('today'); await page.getByLabel('予定のモジュールフィルタ', { exact: true }).selectOption('project'); await page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('書き出せませんでした')); assert.equal(downloads, 0); assert.equal(await stored(page), legacySaved);
+  await page.getByLabel('予定1の名称', { exact: true }).fill(''); assert.equal(await page.getByRole('button', { name: '表示中の予定をICSで書き出す', exact: true }).count(), 0); assert.equal(await stored(page), legacySaved);
 });

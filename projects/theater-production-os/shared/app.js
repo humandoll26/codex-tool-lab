@@ -326,7 +326,15 @@ function ensureRepairs(issues) {
 function projectLink(label, path, hash = '') {
   return el('a', { className: 'button secondary', href: `${isModule ? '../../' : './'}${path}?projectId=${encodeURIComponent(draft.project.id)}${hash}`, onClick: guardNavigation }, label);
 }
-function scheduleContext() { return { project: draft.project, el, field, button, mutate, render, notify, projectLink }; }
+function scheduleContext() {
+  const exportSchedule = (producer, events, filename, mime) => {
+    if (validateDocument(draft).length || corrupt) { update(); notify('入力エラーを修正してから書き出してください。', 'error'); return; }
+    if (!events.length) { notify('表示中の予定がありません。表示月やフィルタを変更してください。'); return; }
+    try { download(producer(draft.project, events), filename, mime); }
+    catch (error) { notify(`カレンダーを書き出せませんでした。${error.message}`, 'error'); }
+  };
+  return { project: draft.project, el, field, button, mutate, render, notify, projectLink, exportSchedule };
+}
 function refreshSchedule(issues) {
   scheduleOutput.replaceChildren();
   if (view === 'calendar') {

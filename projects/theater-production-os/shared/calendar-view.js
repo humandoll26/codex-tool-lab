@@ -1,6 +1,7 @@
 import { TEMPLATE, tokyoToday, generateTemplate, eventsFor, weekRange, agenda } from './schedule.js';
 import { DEFINITIONS } from './modules.js';
 import { newId } from './common.js';
+import { calendarICS, calendarCSV } from './calendar-outputs.js';
 export function eventList(ctx, events, empty = '予定はありません。') {
   const { el } = ctx;
   if (!events.length) return el('p', { className: 'hint' }, empty);
@@ -27,6 +28,10 @@ export function calendarOverview(ctx, state) {
   const inRange = all.filter(e => (!state.module || e.moduleId === state.module) && (state.scope === 'today' ? e.date === today : state.scope === 'week' ? e.date >= week.start && e.date <= week.end : e.date.startsWith(state.month)));
   const selected = state.scope === 'month' && state.selectedDate ? inRange.filter(e => e.date === state.selectedDate) : inRange;
   card.append(el('p', { className: 'hint' }, `日本時間の今日：${today} · ${state.selectedDate ? state.selectedDate + 'の予定 · ' : ''}${selected.length}件`));
+  card.append(el('div', { className: 'toolbar' },
+    ctx.button('表示中の予定をICSで書き出す', () => ctx.exportSchedule(calendarICS, selected, 'production-calendar.ics', 'text/calendar')),
+    ctx.button('表示中の予定をCSVで書き出す', () => ctx.exportSchedule(calendarCSV, selected, 'production-calendar.csv', 'text/csv'))),
+    el('p', { className: 'hint' }, '表示条件に合う予定を書き出します（完了・中止も含む）。取り込み後の更新や重複の扱いはカレンダーアプリにより異なります。'));
   if (state.scope === 'month' && state.selectedDate) card.append(button('月全体の予定に戻す', () => { state.selectedDate = null; render(); }));
   if (state.scope === 'month') {
     const [year, monthNumber] = state.month.split('-').map(Number);
