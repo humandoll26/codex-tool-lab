@@ -3,6 +3,7 @@ import * as rights from '../modules/rights/model.js';
 import * as show_day from '../modules/show-day/model.js';
 import * as front_desk from '../modules/front-desk/model.js';
 import * as settlement from '../modules/settlement/model.js';
+import { report as settlementReport } from '../modules/settlement/outputs.js';
 import * as program from '../modules/program/model.js';
 import * as stage_operations from '../modules/stage-operations/model.js';
 import * as flyer from '../modules/flyer/model.js';
@@ -20,7 +21,7 @@ export const DEFINITIONS = {
   rehearsal: { ...rehearsal, previewText: rehearsal.announcement, name: '稽古', description: '日時・参加役割・連絡事項をまとめる' },
   submissions: { ...submissions, name: '提出物', description: '提出期限・差戻し・提出日を管理する' },
   'front-desk': { ...front_desk, previewText: front_desk.announcement, name: '受付準備', description: '受付準備の作業と記録を整理する' },
-  'settlement': { ...settlement, name: '決算', description: '決算の作業と記録を整理する' },
+  'settlement': { ...settlement, previewText: settlementReport, name: '決算', description: '決算の作業と記録を整理する' },
   'program': { ...program, previewText: program.publicationText, name: 'パンフ', description: 'パンフの作業と記録を整理する' },
   'stage-operations': { ...stage_operations, previewText: stage_operations.timeline, name: '舞台進行', description: '舞台進行の作業と記録を整理する' },
   'venue': { ...venue, name: '劇場・日程', description: '劇場・日程の作業と記録を整理する' },
