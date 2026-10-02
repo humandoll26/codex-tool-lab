@@ -22,6 +22,7 @@ export function moduleBackup(document, id) {
 }
 export function parseModuleBackup(source, expectedId) {
   const packet = parseBoundedJSON(source);
+  if (packet?.format === 'theater-production-os-share') throw new Error('共有用資料は復元できません。バックアップ用のモジュールJSONを選んでください。');
   if (!isRecord(packet) || packet.format !== format || packet.formatVersion !== 1) throw new Error('モジュール専用JSONを選んでください。全公演JSONは「JSONを取り込む」を使ってください。');
   ensureModule(packet.moduleId);
   if (packet.moduleId !== expectedId) throw new Error('この画面とは別のモジュールのJSONです。対応する入口で取り込んでください。');

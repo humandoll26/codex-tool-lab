@@ -74,6 +74,11 @@ footer { color: var(--muted); font-size: .85rem; }
 .print-table th, .print-table td { padding: 8px; border: 1px solid #8a9793; text-align: left; vertical-align: top; overflow-wrap: anywhere; white-space: pre-wrap; }
 .print-table th { background: #f2f5ef; }
 .print-text { white-space: pre-wrap; }
+.share-panel { background: white; }
+.share-panel fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 16px; }
+.share-option { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.share-option input { width: 22px; min-height: 22px; flex: 0 0 22px; }
+.share-json { max-height: 55vh; overflow: auto; font-size: .85rem; }
 @media (max-width: 640px) {
   .print-document { padding: 12px; }
   .print-table-wrap { overflow-x: auto; }
