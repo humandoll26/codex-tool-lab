@@ -170,19 +170,30 @@ export function prepareDocument(document) {
 export function readDocument(storage) {
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (raw === null) return { kind: 'empty' };
-    try { return { kind: 'saved', document: parseDocument(raw) }; }
+    if (raw === null) return { kind: 'empty', raw };
+    try { return { kind: 'saved', document: parseDocument(raw), raw }; }
     catch (error) { return { kind: 'corrupt', error: error.message, raw }; }
   } catch { return { kind: 'unavailable', error: 'このブラウザでは保存データを読み取れません。JSONで書き出して保管してください。' }; }
 }
 
-export function writeDocument(storage, document) {
+const conflictError = '別のタブなどで保存データが変わりました。この画面の入力は保存していません。必要ならJSONへ退避し、保存データを読み直してください。';
+function changed(storage, options) {
+  return Object.hasOwn(options, 'expectedRaw') && storage.getItem(STORAGE_KEY) !== options.expectedRaw;
+}
+export function writeDocument(storage, document, options = {}) {
   const copy = prepareDocument(document);
-  try { storage.setItem(STORAGE_KEY, JSON.stringify(copy)); return { ok: true, document: copy }; }
+  try {
+    if (changed(storage, options)) return { ok: false, conflict: true, document: copy, error: conflictError };
+    const raw = JSON.stringify(copy); storage.setItem(STORAGE_KEY, raw);
+    return { ok: true, document: copy, raw };
+  }
   catch { return { ok: false, document: copy, error: '保存できませんでした。画面のデータは維持しています。JSONを書き出して保管してください。' }; }
 }
 
-export function removeDocument(storage) {
-  try { storage.removeItem(STORAGE_KEY); return { ok: true }; }
+export function removeDocument(storage, options = {}) {
+  try {
+    if (changed(storage, options)) return { ok: false, conflict: true, error: conflictError };
+    storage.removeItem(STORAGE_KEY); return { ok: true };
+  }
   catch { return { ok: false, error: '保存データを消去できませんでした。ブラウザの保存設定を確認してください。' }; }
 }
