@@ -2,6 +2,7 @@ import { calculateBudget } from '../modules/budget/calculator.js';
 import { validateModules } from './modules.js';
 import { validDate } from './common.js';
 import { validateSchedule } from './schedule.js';
+import { inspectJSON, parseBoundedJSON, assertJSONSize, JSON_LIMITS } from './json-limits.js';
 export { calculateBudget } from '../modules/budget/calculator.js';
 
 export const STORAGE_KEY = 'codex-tool-lab:theater-production-os:v1';
@@ -37,6 +38,10 @@ export function validStageDate(value) {
 
 
 export function validateDocument(document) {
+  const structuralIssues = inspectJSON(document);
+  if (structuralIssues.length) return structuralIssues;
+  try { assertJSONSize(JSON.stringify(document)); }
+  catch (error) { return [{ path: '', message: error.message }]; }
   const issues = [];
   const issue = (path, message) => issues.push({ path, message });
   const text = (value, path, required = false) => {
@@ -56,13 +61,6 @@ export function validateDocument(document) {
     });
   };
   if (!record(document)) return [{ path: '', message: 'JSONオブジェクトが必要です。' }];
-  const checkJSON = (value, path) => {
-    if (typeof value === 'number' && !Number.isFinite(value)) issue(path, 'JSONの数値が有限値ではありません。');
-    else if (value !== null && typeof value === 'object') {
-      for (const [key, child] of Object.entries(value)) checkJSON(child, path ? `${path}.${key}` : key);
-    }
-  };
-  checkJSON(document, '');
   if (document.schemaVersion !== 1) issue('schemaVersion', '対応していないデータ版です。schemaVersionは1が必要です。');
   const p = document.project;
   if (!record(p)) return [...issues, { path: 'project', message: '公演オブジェクトが必要です。' }];
@@ -87,6 +85,7 @@ export function validateDocument(document) {
     text(c.name, `project.ticket.priceCategories.${i}.name`, true);
     number(c.price, `project.ticket.priceCategories.${i}.price`);
   });
+  if (stages.length * prices.length > JSON_LIMITS.salesCells) issue('project.performanceDates', 'ステージと料金区分の組合せは2,000件以下にしてください。');
   array(p.calendarEvents, 'project.calendarEvents');
   array(p.documents, 'project.documents');
   if (typeof p.updatedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(p.updatedAt) || !validDate(p.updatedAt.slice(0, 10)) || !Number.isFinite(Date.parse(p.updatedAt))) {
@@ -149,8 +148,7 @@ export function validateDocument(document) {
 }
 
 export function parseDocument(source) {
-  let document;
-  try { document = JSON.parse(source); } catch { throw new Error('JSONの形式が不正です。'); }
+  const document = parseBoundedJSON(source);
   const issues = validateDocument(document);
   if (issues.length) throw new Error(issues.map(i => `${i.path}: ${i.message}`).join('\n'));
   return document;
@@ -164,6 +162,7 @@ export function prepareDocument(document) {
   copy.project.updatedAt = new Date().toISOString();
   const issues = validateDocument(copy);
   if (issues.length) throw new Error(issues.map(i => `${i.path}: ${i.message}`).join('\n'));
+  assertJSONSize(JSON.stringify(copy));
   return copy;
 }
 

@@ -19,6 +19,8 @@ import { calendarView, calendarOverview } from './calendar-view.js';
 import { dashboardView } from './dashboard-view.js';
 import { tokyoToday } from './schedule.js';
 import { moduleBackup, mergeModuleBackup } from './module-backup.js';
+import { readJSONFile, assertJSONSize } from './json-limits.js';
+import { openPrintPreview } from './print-view.js';
 import { newDocument, newId, emptyBudget, STATUSES, STATUS_LABELS, validateDocument,
   calculateBudget, parseDocument, prepareDocument, readDocument, writeDocument, removeDocument, STORAGE_KEY } from './model.js';
 
@@ -148,8 +150,12 @@ function textPreview(source, title) {
   return el('div', {}, el('h3', {}, title), copy, preview);
 }
 function exportJSON() {
-  try { download(JSON.stringify(prepareDocument(draft), null, 2), `theater-production-${draft.project.id}.json`); }
-  catch { notify('入力エラーを修正してからJSONを書き出してください。', 'error'); }
+  try {
+    const document = prepareDocument(draft); let source = JSON.stringify(document, null, 2);
+    try { assertJSONSize(source); } catch { source = JSON.stringify(document); }
+    download(source, `theater-production-${draft.project.id}.json`);
+  }
+  catch (error) { notify(`JSONを書き出せませんでした。${error.message}`, 'error'); }
 }
 function exportModuleJSON() {
   if (corrupt) return;
@@ -159,7 +165,7 @@ function exportModuleJSON() {
 async function importModuleJSON(file) {
   if (!file || !isModule || corrupt) return;
   let next;
-  try { next = mergeModuleBackup(draft, await file.text(), view); }
+  try { next = mergeModuleBackup(draft, await readJSONFile(file), view); }
   catch (error) { notify(`モジュールを取り込めませんでした。現在のデータは変更していません。\n${error.message}`, 'error'); return; }
   if (!confirm(`「${next.sourceTitle}」の${DEFINITIONS[view].name}を取り込み、このモジュールの入力と手動・逆算予定を置き換えますか？公演情報・他のモジュールは保持し、現在の料金と席数で集計します。`)) return;
   const result = writeDocument(storage, next.document, storageOptions()); savedResult(result);
@@ -170,7 +176,7 @@ async function importModuleJSON(file) {
 async function importJSON(file) {
   if (!file) return;
   let next;
-  try { next = parseDocument(await file.text()); }
+  try { next = parseDocument(await readJSONFile(file)); }
   catch (error) { notify(`取込みできませんでした。現在のデータは変更していません。\n${error.message}`, 'error'); return; }
   if (!window.confirm(`「${next.project.title}」を取り込み、現在の公演を置き換えますか？`)) return;
   const result = writeDocument(storage, next, storageOptions());
@@ -334,8 +340,12 @@ function extraEditor(id) {
     if (validateDocument(draft).length) { update(); notify('入力エラーを修正してから書き出してください。', 'error'); return; }
     download(producer(draft.project, moduleValue(id).data), filename, mime);
   };
+  const previewPrint = producer => {
+    if (validateDocument(draft).length) { update(); notify('入力エラーを修正してから印刷用資料を表示してください。', 'error'); return; }
+    openPrintPreview({ el, button, notify }, producer(draft.project, moduleValue(id).data, el));
+  };
   return editors[id]({ id, def, project: draft.project, data: module.data, getData: () => moduleValue(id).data,
-    el, field, button, mutate, fields, update, notify, exportData, edit: action => editModule(id, m => action(m.data)) });
+    el, field, button, mutate, fields, update, notify, exportData, previewPrint, edit: action => editModule(id, m => action(m.data)) });
 }
 function metadata(id) {
   const m = id === 'budget' ? getBudget() : moduleValue(id), name = DEFINITIONS[id].name;
