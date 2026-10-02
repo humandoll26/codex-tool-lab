@@ -21,6 +21,7 @@ import { tokyoToday } from './schedule.js';
 import { moduleBackup, mergeModuleBackup } from './module-backup.js';
 import { readJSONFile, assertJSONSize } from './json-limits.js';
 import { openPrintPreview } from './print-view.js';
+import { openSharePreview } from './share-view.js';
 import { newDocument, newId, emptyBudget, STATUSES, STATUS_LABELS, validateDocument,
   calculateBudget, parseDocument, prepareDocument, readDocument, writeDocument, removeDocument, STORAGE_KEY } from './model.js';
 
@@ -161,6 +162,15 @@ function exportModuleJSON() {
   if (corrupt) return;
   try { download(moduleBackup(draft, view), `theater-production-${view}.json`); }
   catch (error) { notify(`モジュールを書き出せませんでした。${error.message}`, 'error'); }
+}
+function previewModuleShare() {
+  try { sharedModuleCheck(); }
+  catch (error) { notify(error.message, 'error'); return; }
+  openSharePreview({ el, button, download, getDocument: () => draft, id: view });
+}
+function sharedModuleCheck() {
+  if (validateDocument(draft).length) throw new Error('入力エラーを修正してから共有用資料を作成してください。');
+  if (!Object.hasOwn(draft.project.modules, view)) throw new Error('このモジュールは未入力です。先に入力を保存してください。');
 }
 async function importModuleJSON(file) {
   if (!file || !isModule || corrupt) return;
@@ -428,7 +438,7 @@ function render() {
   if (isModule && !corrupt) {
     const moduleInput = el('input', { type: 'file', 'data-import': 'module', accept: '.json,application/json', hidden: '' });
     moduleInput.addEventListener('change', () => { const file = moduleInput.files[0]; moduleInput.value = ''; importModuleJSON(file); });
-    root.append(el('div', { className: 'toolbar' }, button('このモジュールのJSONを書き出す', exportModuleJSON), button('このモジュールのJSONを取り込む', () => moduleInput.click()), moduleInput),
+    root.append(el('div', { className: 'toolbar' }, button('このモジュールのJSONを書き出す', exportModuleJSON), button('このモジュールのJSONを取り込む', () => moduleInput.click()), button('共有用資料を作成', previewModuleShare), moduleInput),
       el('p', { className: 'hint' }, 'モジュール専用JSONは同じ公演IDで使います。共通公演情報も含むため、共有前に内容を確認してください。全体のバックアップは「JSONを書き出す」を使ってください。'));
   }
   if (corrupt) {

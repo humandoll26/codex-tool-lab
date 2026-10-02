@@ -149,6 +149,7 @@ export function validateDocument(document) {
 
 export function parseDocument(source) {
   const document = parseBoundedJSON(source);
+  if (document?.format === 'theater-production-os-share') throw new Error('共有用資料は復元できません。バックアップ用の全公演JSONを選んでください。');
   const issues = validateDocument(document);
   if (issues.length) throw new Error(issues.map(i => `${i.path}: ${i.message}`).join('\n'));
   return document;

@@ -243,6 +243,75 @@ function fullFixture() {
     id, status: 'not-started', startDate: null, dueDate: null, progress: 0, alerts: [], data: DEFINITIONS[id].defaults() };
   return d;
 }
+test('SHARE-01/04/05: mobile share defaults minimize content, opt-in updates exact output and reopening resets choices', async t => {
+  const d = fullFixture(); d.project.privateExtension = 'PRIVATE_EXTENSION_CANARY'; d.project.modules.flyer.data.introduction = '<img src="https://example.invalid/leak" onerror="window.shareExecuted=true">PRIVATE_TEXT_CANARY';
+  const page = await setup(t, { saved: d, width: 375 }); const external = []; let downloads = 0;
+  page.on('request', r => { if (new URL(r.url()).origin !== origin) external.push(r.url()); }); page.on('download', () => downloads++);
+  await page.context().route('**/*', route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort());
+  await page.goto(origin + prefix + 'modules/flyer/index.html'); const saved = await stored(page);
+  const trigger = page.getByRole('button', { name: '共有用資料を作成', exact: true }); await trigger.click();
+  const preview = page.getByLabel('共有するJSONの内容', { exact: true });
+  const initial = JSON.parse(await preview.innerText()); assert.deepEqual(initial.project, { title: '架空公演' }); assert.equal(initial.module.data, undefined);
+  assert.equal(downloads, 0); assert.equal(await page.locator('#main').isVisible(), false);
+  await page.screenshot({ path: '/tmp/os-share-default-mobile.png', fullPage: true });
+  await page.getByRole('checkbox', { name: '公演名', exact: true }).uncheck(); await page.getByRole('checkbox', { name: '劇団名', exact: true }).check();
+  await page.getByRole('checkbox', { name: '作業データ（原稿・メモ・金額など）', exact: true }).check();
+  const expected = await preview.innerText(); assert.ok(expected.includes('PRIVATE_TEXT_CANARY')); assert.equal(expected.includes('PRIVATE_EXTENSION_CANARY'), false);
+  assert.deepEqual(JSON.parse(expected).project, { companyName: 'サンプル劇団' });
+  assert.equal(await page.locator('.share-panel img, .share-panel script, .share-panel iframe').count(), 0); assert.equal(await page.evaluate(() => Boolean(window.shareExecuted)), false);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const file = await downloadJSON(page, () => page.getByRole('button', { name: '共有用JSON資料を書き出す', exact: true }).click());
+  assert.equal(file, expected); assert.equal(downloads, 1); assert.equal(await stored(page), saved); assert.deepEqual(external, []);
+  await page.screenshot({ path: '/tmp/os-share-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: '編集画面へ戻る', exact: true }).click(); assert.equal(await trigger.evaluate(node => node === document.activeElement), true);
+  await trigger.click(); assert.equal(await page.getByRole('checkbox', { name: '公演名', exact: true }).isChecked(), true); assert.equal(await page.getByRole('checkbox', { name: '作業データ（原稿・メモ・金額など）', exact: true }).isChecked(), false);
+  await page.keyboard.press('Escape'); assert.equal(await page.locator('.share-panel').count(), 0); assert.equal(await stored(page), saved);
+});
+test('SHARE-03: shared reference files cannot replace full or module backups', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + prefix + 'modules/flyer/index.html'); const saved = await stored(page);
+  await page.getByRole('button', { name: '共有用資料を作成', exact: true }).click();
+  const source = await page.getByLabel('共有するJSONの内容', { exact: true }).innerText(); await page.keyboard.press('Escape');
+  let dialogs = 0; page.on('dialog', d => { dialogs++; d.dismiss(); });
+  for (const scope of ['project', 'module']) {
+    await page.locator(`input[data-import=${scope}]`).setInputFiles({ name: 'share.json', mimeType: 'application/json', buffer: Buffer.from(source) });
+    await page.getByRole('status').filter({ hasText: '共有用資料は復元できません' }).waitFor(); assert.equal(await stored(page), saved);
+  }
+  assert.equal(dialogs, 0);
+});
+test('SHARE-03/04: missing or invalid modules refuse sharing and legacy data stays private', async t => {
+  const d = fullFixture(); delete d.project.modules.flyer;
+  const page = await setup(t, { saved: d }); await page.goto(origin + prefix + 'modules/flyer/index.html');
+  await page.getByRole('button', { name: '共有用資料を作成', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('未入力')); assert.equal(await page.locator('.share-panel').count(), 0);
+  await page.getByLabel('公演紹介文', { exact: true }).fill('原稿'); await page.getByText('公演情報を作成・編集する', { exact: true }).click(); await page.getByLabel('公演タイトル（必須）', { exact: true }).fill('');
+  await page.getByRole('button', { name: '共有用資料を作成', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('入力エラー'));
+  const legacy = fullFixture(); legacy.project.modules.flyer.data = { privateLegacy: 'PRIVATE_LEGACY_CANARY' };
+  const other = await setup(t, { saved: legacy }); await other.goto(origin + prefix + 'modules/flyer/index.html');
+  await other.getByRole('button', { name: '共有用資料を作成', exact: true }).click(); assert.equal(await other.getByRole('checkbox', { name: '作業データ（原稿・メモ・金額など）', exact: true }).isDisabled(), true);
+  assert.equal((await other.getByLabel('共有するJSONの内容', { exact: true }).innerText()).includes('PRIVATE_LEGACY_CANARY'), false);
+});
+test('SHARE-04: unsaved valid quota/conflict inputs share without clearing navigation protection', async t => {
+  const page = await setup(t, { saved: fullFixture(), failure: 'quota' }); await page.goto(origin + prefix + 'modules/flyer/index.html'); const saved = await stored(page);
+  await page.getByLabel('公演紹介文', { exact: true }).fill('未保存の共有原稿'); await page.getByRole('button', { name: '共有用資料を作成', exact: true }).click();
+  await page.getByRole('checkbox', { name: '作業データ（原稿・メモ・金額など）', exact: true }).check(); assert.ok((await page.getByLabel('共有するJSONの内容', { exact: true }).innerText()).includes('未保存の共有原稿'));
+  await page.keyboard.press('Escape'); assert.equal(await stored(page), saved); assert.equal(await page.getByLabel('公演紹介文', { exact: true }).inputValue(), '未保存の共有原稿');
+  await page.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('保存できていない'));
+  const conflict = await setup(t, { saved: fullFixture() }); await conflict.goto(origin + prefix + 'modules/flyer/index.html');
+  await conflict.evaluate(key => { const d = JSON.parse(localStorage.getItem(key)); d.project.title = '別タブ更新'; localStorage.setItem(key, JSON.stringify(d)); }, STORAGE_KEY);
+  await conflict.getByLabel('公演紹介文', { exact: true }).fill('競合時の共有原稿');
+  await conflict.getByRole('button', { name: '共有用資料を作成', exact: true }).click(); await conflict.getByRole('checkbox', { name: '作業データ（原稿・メモ・金額など）', exact: true }).check();
+  assert.ok((await conflict.getByLabel('共有するJSONの内容', { exact: true }).innerText()).includes('競合時の共有原稿'));
+  await conflict.keyboard.press('Escape'); assert.equal(JSON.parse(await stored(conflict)).project.title, '別タブ更新');
+});
+test('SHARE-02/05: all 15 entrances explicitly export shared references with only the selected module', async t => {
+  const page = await setup(t, { saved: fullFixture() });
+  for (const id of Object.keys(DEFINITIONS)) {
+    await page.goto(origin + prefix + `modules/${id}/index.html`); const saved = await stored(page);
+    await page.getByRole('button', { name: '共有用資料を作成', exact: true }).click(); await page.getByRole('checkbox', { name: '作業データ（原稿・メモ・金額など）', exact: true }).check();
+    const output = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: '共有用JSON資料を書き出す', exact: true }).click()));
+    assert.equal(output.format, 'theater-production-os-share'); assert.equal(output.module.id, id); assert.ok(output.module.data); assert.equal(output.document, undefined);
+    assert.equal(await stored(page), saved); await page.keyboard.press('Escape');
+  }
+});
 function printFixture() {
   const d = fullFixture();
   const front = d.project.modules['front-desk'].data;
