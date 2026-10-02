@@ -1,3 +1,4 @@
+import * as contracts from '../modules/contracts/model.js';
 import * as archive from '../modules/archive/model.js';
 import * as venue from '../modules/venue/model.js';
 import * as rights from '../modules/rights/model.js';
@@ -14,6 +15,7 @@ import * as tickets from '../modules/tickets/model.js';
 import * as rehearsal from '../modules/rehearsal/model.js';
 import * as submissions from '../modules/submissions/model.js';
 export const DEFINITIONS = {
+  contracts: { ...contracts, name: '契約・支払い', description: '契約状態・請求書受領・支払予定を記録する' },
   budget: { name: '予算・料金', description: '想定販売と収支を試算する' },
   flyer: { ...flyer, name: 'チラシ', description: '掲載情報・原稿・校正をまとめる' },
   distribution: { ...distribution, name: '配布', description: '配布先・部数・残部を管理する' },

@@ -421,6 +421,32 @@
             }
           ]
         }
+      },
+      "contracts": {
+        "id": "contracts",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 0,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "contract-demo",
+              "name": "架空の舞台協力",
+              "role": "舞台担当A",
+              "status": "agreed",
+              "amount": 30000,
+              "invoiceStatus": "pending",
+              "invoiceDate": null,
+              "paymentDue": "2026-12-05",
+              "paymentStatus": "pending",
+              "paidDate": null,
+              "notes": "役割ラベルによる架空の作業記録"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [
