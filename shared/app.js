@@ -1,3 +1,6 @@
+import { editor as venueEditor } from '../modules/venue/editor.js';
+import { editor as rightsEditor } from '../modules/rights/editor.js';
+import { editor as show_dayEditor } from '../modules/show-day/editor.js';
 import { editor as front_deskEditor } from '../modules/front-desk/editor.js';
 import { editor as settlementEditor } from '../modules/settlement/editor.js';
 import { editor as programEditor } from '../modules/program/editor.js';
@@ -20,7 +23,7 @@ const root = document.querySelector('#main');
 const isBudget = document.body.dataset.view === 'budget';
 const view = document.body.dataset.view;
 const isModule = Boolean(DEFINITIONS[view]);
-const editors = { flyer: flyerEditor, distribution: distributionEditor, publicity: publicityEditor, tickets: ticketsEditor, rehearsal: rehearsalEditor, submissions: submissionsEditor, 'front-desk': front_deskEditor, 'settlement': settlementEditor, 'program': programEditor, 'stage-operations': stage_operationsEditor };
+const editors = { flyer: flyerEditor, distribution: distributionEditor, publicity: publicityEditor, tickets: ticketsEditor, rehearsal: rehearsalEditor, submissions: submissionsEditor, 'front-desk': front_deskEditor, 'settlement': settlementEditor, 'program': programEditor, 'stage-operations': stage_operationsEditor, 'venue': venueEditor, 'rights': rightsEditor, 'show-day': show_dayEditor };
 const storage = { getItem: key => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: key => window.localStorage.removeItem(key) };
 const loaded = readDocument(storage);
@@ -345,9 +348,9 @@ function render() {
   root.append(el('section', { className: 'card' }, el('h2', {}, '制作モジュール'),
     el('div', { className: 'toolbar' }, Object.entries(DEFINITIONS).map(([id, def]) => projectLink(def.name, `modules/${id}/index.html`)))));
   if (!isModule) {
-    const modules = [['劇場・日程', '会場候補と予約'], ['作品・権利', '作品情報と許諾'], ['当日運営', '受付・物販・トラブル記録']];
+    const modules = [['契約・支払い', '契約と支払の確認'], ['公演アーカイブ', '公演資料と引継ぎ']];
     root.append(el('section', { className: 'card' }, el('h2', {}, 'これからのモジュール'),
-      el('p', { className: 'hint' }, '11の制作モジュールを利用できます。以下は将来予定です。'),
+      el('p', { className: 'hint' }, '14の制作モジュールを利用できます。以下は将来予定です。'),
       el('ul', { className: 'module-list' }, modules.map(([name, description]) => el('li', {}, el('strong', {}, name), el('p', { className: 'hint' }, `${description} · 将来予定`))))));
   }
   update(false);

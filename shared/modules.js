@@ -1,3 +1,6 @@
+import * as venue from '../modules/venue/model.js';
+import * as rights from '../modules/rights/model.js';
+import * as show_day from '../modules/show-day/model.js';
 import * as front_desk from '../modules/front-desk/model.js';
 import * as settlement from '../modules/settlement/model.js';
 import * as program from '../modules/program/model.js';
@@ -19,7 +22,10 @@ export const DEFINITIONS = {
   'front-desk': { ...front_desk, name: '受付準備', description: '受付準備の作業と記録を整理する' },
   'settlement': { ...settlement, name: '決算', description: '決算の作業と記録を整理する' },
   'program': { ...program, name: 'パンフ', description: 'パンフの作業と記録を整理する' },
-  'stage-operations': { ...stage_operations, name: '舞台進行', description: '舞台進行の作業と記録を整理する' }
+  'stage-operations': { ...stage_operations, name: '舞台進行', description: '舞台進行の作業と記録を整理する' },
+  'venue': { ...venue, name: '劇場・日程', description: '劇場・日程の作業と記録を整理する' },
+  'rights': { ...rights, name: '作品・権利', description: '作品・権利の作業と記録を整理する' },
+  'show-day': { ...show_day, name: '当日運営', description: '当日運営の作業と記録を整理する' }
 };
 export function validateModules(project) {
   const issues = [];

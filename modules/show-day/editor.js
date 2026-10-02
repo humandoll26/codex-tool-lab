@@ -1,0 +1,5 @@
+import {collectionEditor} from '../../shared/work-editor.js';import {report,exportCSV} from './model.js';
+export function editor(ctx){const card=collectionEditor(ctx,{
+ title:'当日運営・物販記録',hint:'数量・単価は物販だけに入力します。参考売上は決算へ自動転記しません。予約者名簿や個人情報は記録しないでください。',rowTitle:'当日記録',addLabel:'当日記録を追加',newRow:()=>({name:'',date:null,time:'12:00',category:'reception',assignee:'',status:'pending',quantity:0,price:0,notes:''}),
+ rowFields:[{key:'name',label:'内容'},{key:'date',label:'日付',type:'date'},{key:'time',label:'時刻',type:'time'},{key:'category',label:'区分',options:[{value:'reception',label:'受付'},{value:'seating',label:'客席案内'},{value:'goods',label:'物販'},{value:'trouble',label:'トラブル'},{value:'announcement',label:'アナウンス'}]},{key:'assignee',label:'担当役割'},{key:'status',label:'状態',options:[{value:'pending',label:'未対応'},{value:'completed',label:'対応済み'}]},{key:'quantity',label:'物販数量',type:'number'},{key:'price',label:'物販単価（円）',type:'number'},{key:'notes',label:'備考',type:'textarea'}],export:report,exportLabel:'当日記録を書き出す',fileName:'show-day.txt',mime:'text/plain'
+});card.append(ctx.button('当日CSVを書き出す',()=>ctx.exportData(exportCSV,'show-day.csv','text/csv')));return card;}

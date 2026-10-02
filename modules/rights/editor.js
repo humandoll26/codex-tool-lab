@@ -1,0 +1,5 @@
+import {collectionEditor} from '../../shared/work-editor.js';import {outline,exportCSV} from './model.js';
+export function editor(ctx){const card=collectionEditor(ctx,{
+ title:'作品・上演権確認',hint:'確認事項と根拠を記録するツールです。許諾の法的判断や権利者への自動連絡は行いません。',fields:[{key:'workName',label:'作品名'},{key:'author',label:'作者表記'},{key:'runningMinutes',label:'上演時間（分）',type:'number'},{key:'scriptNotes',label:'脚本メモ',type:'textarea'},{key:'staff',label:'必要スタッフ',type:'textarea'}],rowTitle:'権利確認',addLabel:'権利確認を追加',
+ newRow:()=>({name:'',contact:'',date:null,status:'pending',confirmedDate:null,evidence:''}),rowFields:[{key:'name',label:'名称'},{key:'contact',label:'窓口役割'},{key:'date',label:'期限',type:'date'},{key:'status',label:'状態',options:[{value:'pending',label:'未確認'},{value:'inquiring',label:'照会中'},{value:'confirmed',label:'確認済み'},{value:'not-needed',label:'不要'}]},{key:'confirmedDate',label:'確認日',type:'date'},{key:'evidence',label:'根拠メモ',type:'textarea'}],export:outline,exportLabel:'作品概要を書き出す',fileName:'rights.txt',mime:'text/plain'
+});card.append(ctx.button('権利確認CSVを書き出す',()=>ctx.exportData(exportCSV,'rights.csv','text/csv')));return card;}

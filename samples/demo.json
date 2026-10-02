@@ -313,6 +313,85 @@
             }
           ]
         }
+      },
+      "venue": {
+        "id": "venue",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-venue",
+              "name": "架空劇場",
+              "date": "2026-11-30",
+              "status": "booked",
+              "holdUntil": null,
+              "fee": 100000,
+              "paid": 50000,
+              "paymentDue": "2026-11-10",
+              "loadIn": "09:00",
+              "loadOut": "22:00",
+              "contact": "劇場担当役割",
+              "notes": "架空の候補・予約情報"
+            }
+          ]
+        }
+      },
+      "rights": {
+        "id": "rights",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "workName": "架空の作品",
+          "author": "架空作者表記",
+          "runningMinutes": 90,
+          "scriptNotes": "架空の脚本",
+          "staff": "舞台・照明・音響",
+          "items": [
+            {
+              "id": "demo-right",
+              "name": "上演条件の確認",
+              "contact": "制作担当",
+              "date": "2026-10-20",
+              "status": "pending",
+              "confirmedDate": null,
+              "evidence": ""
+            }
+          ]
+        }
+      },
+      "show-day": {
+        "id": "show-day",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 10,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "demo-goods",
+              "name": "パンフ販売",
+              "date": "2026-11-30",
+              "time": "13:00",
+              "category": "goods",
+              "assignee": "物販担当",
+              "status": "completed",
+              "quantity": 10,
+              "price": 500,
+              "notes": "架空の参考売上"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [
