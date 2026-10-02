@@ -19,7 +19,7 @@ import { calendarView, calendarOverview } from './calendar-view.js';
 import { dashboardView } from './dashboard-view.js';
 import { tokyoToday } from './schedule.js';
 import { newDocument, newId, emptyBudget, STATUSES, STATUS_LABELS, validateDocument,
-  calculateBudget, parseDocument, prepareDocument, readDocument, writeDocument, removeDocument } from './model.js';
+  calculateBudget, parseDocument, prepareDocument, readDocument, writeDocument, removeDocument, STORAGE_KEY } from './model.js';
 
 const root = document.querySelector('#main');
 const isBudget = document.body.dataset.view === 'budget';
@@ -29,6 +29,10 @@ const editors = { archive: archiveEditor, flyer: flyerEditor, distribution: dist
 const storage = { getItem: key => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: key => window.localStorage.removeItem(key) };
 const loaded = readDocument(storage);
+let expectedRaw = loaded.raw;
+let storageBlocked = loaded.kind === 'unavailable';
+let storageConflict = false;
+let conflictOutput;
 let draft = loaded.document ? structuredClone(loaded.document) : newDocument();
 let corrupt = loaded.kind === 'corrupt';
 let saveMessage = loaded.kind === 'saved' ? '保存済みの公演を読み込みました。' :
@@ -95,6 +99,29 @@ function editModule(id, action) {
   action(draft.project.modules[id]);
 }
 function notify(message, type = '') { saveMessage = message; messageType = type; if (notice) { notice.textContent = message; notice.className = `notice ${type}`; } }
+const storageOptions = () => expectedRaw === undefined ? {} : { expectedRaw };
+function updateConflictNotice() {
+  if (!conflictOutput) return;
+  conflictOutput.replaceChildren(); conflictOutput.hidden = !storageConflict;
+  if (storageConflict) conflictOutput.append(el('p', {}, '他のタブなどで保存内容が変わっています。この画面の編集は保持し、自動保存と画面間の移動を止めています。必要なら「JSONを書き出す」で退避してください。'),
+    button('保存データを読み直す', () => {
+      if (!confirm('この画面の未保存入力を破棄し、保存データを読み直しますか？必要なら先にJSONを書き出してください。')) return;
+      const url = new URL(location.href); url.searchParams.delete('projectId'); history.replaceState(null, '', url); location.reload();
+    }));
+}
+function savedResult(result) {
+  if (result.ok) { expectedRaw = result.raw; storageBlocked = false; storageConflict = false; }
+  else { storageBlocked = true; if (result.conflict) storageConflict = true; }
+  updateConflictNotice();
+}
+window.addEventListener('storage', event => {
+  if (event.key !== STORAGE_KEY && event.key !== null) return;
+  try {
+    if (event.storageArea !== window.localStorage || storage.getItem(STORAGE_KEY) === expectedRaw) return;
+    storageConflict = true; storageBlocked = true;
+    updateConflictNotice(); notify('別のタブなどで保存データが変わりました。この画面の編集は保持しています。', 'warning');
+  } catch { storageBlocked = true; notify('保存データを読み取れません。画面内の内容をJSONへ書き出してください。', 'warning'); }
+});
 
 function download(source, name, mime = 'application/json') {
   const url = URL.createObjectURL(new Blob([source], { type: `${mime};charset=utf-8` }));
@@ -129,7 +156,9 @@ async function importJSON(file) {
   try { next = parseDocument(await file.text()); }
   catch (error) { notify(`取込みできませんでした。現在のデータは変更していません。\n${error.message}`, 'error'); return; }
   if (!window.confirm(`「${next.project.title}」を取り込み、現在の公演を置き換えますか？`)) return;
-  const result = writeDocument(storage, next);
+  const result = writeDocument(storage, next, storageOptions());
+  savedResult(result);
+  if (result.conflict) { notify(result.error, 'warning'); return; }
   draft = result.document; corrupt = false; touched = true;
   const url = new URL(location.href); url.searchParams.delete('projectId'); history.replaceState(null, '', url);
   notify(result.ok ? 'JSONを取り込み、保存しました。' : result.error, result.ok ? '' : 'warning');
@@ -144,8 +173,9 @@ async function loadSample() {
 }
 function reset() {
   if (!window.confirm('このOSの公演データを全消去しますか？元に戻せません。必要なら先にJSONを書き出してください。')) return;
-  const result = removeDocument(storage);
-  if (!result.ok) { notify(result.error, 'error'); return; }
+  const result = removeDocument(storage, storageOptions());
+  if (!result.ok) { savedResult(result); notify(result.error, result.conflict ? 'warning' : 'error'); return; }
+  expectedRaw = null; storageBlocked = false; storageConflict = false;
   draft = newDocument(); corrupt = false; touched = false;
   const url = new URL(location.href); url.searchParams.delete('projectId'); history.replaceState(null, '', url);
   notify('このOSの保存データを消去しました。新しい公演を入力できます。'); render();
@@ -198,8 +228,10 @@ function update(persist = true) {
   }
   if (persist) {
     if (issues.length) notify('未保存の入力があります。エラーを修正すると自動保存します。最後に保存できた公演は保持しています。', 'warning');
+    else if (storageConflict) notify('他のタブなどで保存データが変わっています。画面内の内容をJSONへ退避し、保存データを読み直してください。', 'warning');
     else if (!corrupt) {
-      const result = writeDocument(storage, draft);
+      const result = writeDocument(storage, draft, storageOptions());
+      savedResult(result);
       draft.project.updatedAt = result.document.project.updatedAt;
       notify(result.ok ? '自動保存しました。' : result.error, result.ok ? '' : 'warning');
     }
@@ -302,7 +334,7 @@ function metadata(id) {
 }
 function guardNavigation(event) {
   if (validateDocument(draft).length) { event.preventDefault(); update(); notify('移動前に入力エラーを修正してください。未保存の値を失わないよう、この画面で修正できます。', 'warning'); return false; }
-  if (messageType === 'warning') { event.preventDefault(); notify('ブラウザに保存できていないため、別画面へデータを引き継げません。この画面で編集し、JSONを書き出してください。', 'warning'); return false; }
+  if (storageBlocked || storageConflict) { event.preventDefault(); notify('ブラウザに保存できていないため、別画面へデータを引き継げません。この画面で編集し、JSONを書き出してください。', 'warning'); return false; }
   return true;
 }
 function modulePicker() {
@@ -351,6 +383,8 @@ function render() {
   root.replaceChildren();
   notice = el('div', { className: `notice ${messageType}`, role: 'status', 'aria-live': 'polite', style: 'white-space:pre-wrap' }, saveMessage);
   root.append(notice);
+  conflictOutput = el('section', { className: 'notice warning', 'aria-label': '保存データの競合' });
+  root.append(conflictOutput); updateConflictNotice();
   const requestedId = new URL(location.href).searchParams.get('projectId');
   if (requestedId !== null && requestedId !== draft.project.id) {
     root.append(el('section', { className: 'card' }, el('h2', {}, '公演が見つかりません'),

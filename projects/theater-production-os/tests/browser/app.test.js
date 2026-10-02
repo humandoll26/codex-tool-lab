@@ -671,3 +671,43 @@ test('ARCH-03: snapshot capture refuses absent settlement and invalid edits with
   await page.getByRole('button', { name: '現在の収支原稿をアーカイブに保存', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('先に決算')); assert.equal(await stored(page), saved);
   await page.getByLabel('実来場者数（未入力は空欄）', { exact: true }).fill('1.5'); await page.getByRole('button', { name: '現在の収支原稿をアーカイブに保存', exact: true }).click(); assert.ok((await page.getByRole('status').innerText()).includes('入力エラーを修正')); assert.equal(await stored(page), saved);
 });
+
+test('SAVE-02/03: another tab triggers conflict, preserves unsaved work, blocks navigation after copy and reloads only after confirmation', async t => {
+  const first = await setup(t, { saved: fullFixture() }); await first.goto(origin + master);
+  const other = await first.context().newPage(); const errors = []; other.on('pageerror', e => errors.push(e.message)); t.after(() => assert.deepEqual(errors, [])); await other.goto(origin + prefix + 'modules/front-desk/index.html');
+  await first.evaluate(() => localStorage.setItem('another-tool', 'changed')); assert.equal(await other.getByLabel('保存データの競合', { exact: true }).isVisible(), false);
+  await first.getByLabel('劇団名', { exact: true }).fill('別タブの最新劇団'); const latest = await stored(first);
+  await other.getByLabel('保存データの競合', { exact: true }).waitFor({ state: 'visible' }); await other.getByLabel('当日案内文', { exact: true }).fill('このタブの未保存案内'); assert.equal(await stored(other), latest);
+  await other.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin }); await other.getByRole('button', { name: '原稿をコピー', exact: true }).click(); await waitForText(other.getByRole('status'), '原稿をコピーしました');
+  const currentURL = other.url(); await other.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); assert.equal(other.url(), currentURL);
+  const backup = JSON.parse(await downloadJSON(other, () => other.getByRole('button', { name: 'JSONを書き出す', exact: true }).click())); assert.equal(backup.project.modules['front-desk'].data.guidance, 'このタブの未保存案内'); assert.equal(await stored(other), latest);
+  other.once('dialog', dialog => dialog.dismiss()); await other.getByRole('button', { name: '保存データを読み直す', exact: true }).click(); assert.equal(await other.getByLabel('当日案内文', { exact: true }).inputValue(), 'このタブの未保存案内');
+  other.once('dialog', dialog => dialog.accept()); await other.getByRole('button', { name: '保存データを読み直す', exact: true }).click(); await waitForText(other.getByRole('status'), '保存済みの公演を読み込みました'); assert.equal(await other.getByLabel('保存データの競合', { exact: true }).isVisible(), false); assert.equal(await other.getByLabel('劇団名', { exact: true }).inputValue(), '別タブの最新劇団'); assert.equal(await other.getByLabel('当日案内文', { exact: true }).inputValue(), '');
+});
+
+test('SAVE-02: same-tab external writes refuse automatic save, import and deletion without changing either document', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + master);
+  const latest = fullFixture(); latest.project.id = 'different-project'; latest.project.title = '別の保存公演';
+  await page.evaluate(({ key, data }) => localStorage.setItem(key, JSON.stringify(data)), { key: STORAGE_KEY, data: latest }); const saved = await stored(page);
+  await page.getByLabel('劇団名', { exact: true }).fill('この画面の入力'); assert.equal(await stored(page), saved); assert.equal(await page.getByLabel('保存データの競合', { exact: true }).isVisible(), true);
+  const backup = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click())); assert.equal(backup.project.companyName, 'この画面の入力'); assert.equal(backup.project.id, 'project-demo');
+  page.once('dialog', dialog => dialog.accept()); await upload(page, fixture()); await waitForText(page.getByRole('status'), '別のタブなどで保存データが変わりました'); assert.equal(await page.getByLabel('劇団名', { exact: true }).inputValue(), 'この画面の入力'); assert.equal(await stored(page), saved);
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: '全データを消去', exact: true }).click(); assert.equal(await stored(page), saved);
+  page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: '保存データを読み直す', exact: true }).click(); await waitForText(page.getByRole('status'), '保存済みの公演を読み込みました'); assert.equal(await page.getByLabel('公演タイトル（必須）', { exact: true }).inputValue(), '別の保存公演');
+});
+
+test('SAVE-02/03: external removal and corrupt replacement are protected and can be inspected after reload', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + master);
+  await page.evaluate(key => localStorage.removeItem(key), STORAGE_KEY); await page.getByLabel('劇団名', { exact: true }).fill('消去後の未保存'); assert.equal(await stored(page), null);
+  const backup = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'JSONを書き出す', exact: true }).click())); assert.equal(backup.project.companyName, '消去後の未保存');
+  await page.evaluate(key => localStorage.setItem(key, '{broken'), STORAGE_KEY); page.once('dialog', dialog => dialog.accept()); await page.getByRole('button', { name: '保存データを読み直す', exact: true }).click(); await page.getByRole('heading', { name: '保存データを読み込めません', exact: true }).waitFor(); assert.equal(await stored(page), '{broken'); assert.equal(await downloadJSON(page, () => page.getByRole('button', { name: '破損データをそのまま書き出す', exact: true }).click()), '{broken');
+});
+
+test('SAVE-03/04: copy success does not clear a storage failure, but a later successful save restores navigation', async t => {
+  const page = await setup(t, { saved: fullFixture() }); await page.goto(origin + budget); await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
+  await page.evaluate(() => { const original = Storage.prototype.setItem; window.restoreStorageForTest = () => Storage.prototype.setItem = original; Storage.prototype.setItem = function(key, value) { if (key.startsWith('codex-tool-lab:')) throw new DOMException('quota', 'QuotaExceededError'); return original.call(this, key, value); }; });
+  const saved = await stored(page); await page.getByLabel('来場者1人当たりの変動費（円）', { exact: true }).fill('700'); assert.equal(await stored(page), saved);
+  await page.getByRole('button', { name: '原稿をコピー', exact: true }).click(); await waitForText(page.getByRole('status'), '原稿をコピーしました'); const currentURL = page.url(); await page.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); assert.equal(page.url(), currentURL);
+  await page.evaluate(() => window.restoreStorageForTest()); await page.getByLabel('来場者1人当たりの変動費（円）', { exact: true }).fill('600'); assert.equal(JSON.parse(await stored(page)).project.modules.budget.data.variableCostPerAttendee, 600);
+  await page.getByRole('link', { name: '公演情報へ戻る', exact: true }).click(); await page.waitForURL('**/index.html?projectId=*');
+});
