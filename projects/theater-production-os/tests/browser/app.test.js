@@ -563,6 +563,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['venue', '会場CSVを書き出す', 'venue.csv'],
     ['rights', '作品概要を書き出す', 'rights.txt'],
     ['show-day', '当日記録を書き出す', 'show-day.txt'],
+    ['funding', '助成・協賛・広告CSVを書き出す', 'funding.csv'],
     ['contracts', '契約CSVを書き出す', 'contracts.csv'],
     ['archive', '資料一覧CSVを書き出す', 'archive.csv']
   ]) {
@@ -586,7 +587,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     const packet = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'このモジュールのJSONを書き出す', exact: true }).click()));
     assert.deepEqual(Object.keys(packet.document.project.modules), [id]); assert.equal(packet.document.project.documents.length, 0);
   }
-  assert.equal(downloadCount, 37, 'only explicit export actions download files');
+  assert.equal(downloadCount, 39, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -920,4 +921,23 @@ test('CONTRACT-01: legacy contract extension is kept and never silently initiali
   const d=fullFixture();d.project.modules.contracts={id:'contracts',status:'in-progress',startDate:null,dueDate:null,progress:0,alerts:[],data:{privateLegacy:'keep'}};
   const page=await setup(t,{saved:d});await page.goto(origin+prefix+'modules/contracts/index.html');assert.equal(await page.getByRole('button',{name:'契約を追加',exact:true}).count(),0);
   assert.deepEqual(JSON.parse(await stored(page)).project.modules.contracts.data,{privateLegacy:'keep'});
+});
+
+test('FUND-01/02/03: mobile grant receipts, report dates, cancellation and calendar row links',async t=>{
+ const d=fullFixture(),before=structuredClone(d.project.modules.settlement),page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'modules/funding/index.html');
+ await page.getByRole('button',{name:'案件を追加',exact:true}).click();await page.getByLabel('案件1の名称',{exact:true}).fill('架空の公演助成');await page.getByLabel('案件1の団体名',{exact:true}).fill('文化団体A');await page.getByLabel('案件1の状態',{exact:true}).selectOption('confirmed');await page.getByLabel('案件1の採択・確定額（円）',{exact:true}).fill('50000');await page.getByLabel('案件1の入金予定日',{exact:true}).fill(tokyoToday());await page.getByLabel('案件1の報告期限（助成金）',{exact:true}).fill(tokyoToday());
+ let saved=await stored(page);await page.getByLabel('案件1の入金済み額（円）',{exact:true}).fill('10000');assert.equal(await stored(page),saved);await page.getByLabel('案件1の入金日',{exact:true}).fill(tokyoToday());saved=await stored(page);await page.getByLabel('案件1の入金済み額（円）',{exact:true}).fill('50001');assert.equal(await stored(page),saved);
+ await page.getByLabel('案件1の入金済み額（円）',{exact:true}).fill('10000');saved=await stored(page);await page.getByLabel('案件1の報告状態',{exact:true}).selectOption('submitted');assert.equal(await stored(page),saved);await page.getByLabel('案件1の報告提出日',{exact:true}).fill(tokyoToday());await page.reload();assert.equal(await page.getByLabel('案件1の入金済み額（円）',{exact:true}).inputValue(),'10000');assert.ok((await text(page)).includes('40,000円'));
+ await page.getByLabel('案件1の状態',{exact:true}).selectOption('cancelled');assert.ok((await text(page)).includes('10,000円'));assert.deepEqual(JSON.parse(await stored(page)).project.modules.settlement,before);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'/tmp/os-funding-mobile.png',fullPage:true});
+ await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/助成・協賛・広告入金：架空の公演助成/}).click();await page.waitForURL('**/modules/funding/index.html?projectId=*#item-*');assert.equal(await page.getByLabel('案件1の名称',{exact:true}).inputValue(),'架空の公演助成');
+});
+test('FUND-01/02/04/05: advertising material dates, safe CSV, selective shares and no outside requests',async t=>{
+ const d=JSON.parse(await readFile(path.join(projectRoot,'samples/demo.json'),'utf8')),r=d.project.modules.funding.data.items[0];r.kind='advertisement';r.adSlot='架空のパンフ枠';r.name='=HOSTILE()';r.notes='<img src=x onerror="window.fundBad=true">';r.materialStatus='pending';
+ const page=await setup(t,{saved:d,width:375}),requests=[];page.on('request',r=>{if(new URL(r.url()).origin!==origin)requests.push(r.url());});let downloads=0;page.on('download',()=>downloads++);await page.goto(origin+prefix+'modules/funding/index.html');assert.equal(downloads,0);let saved=await stored(page);
+ await page.getByLabel('案件1の入稿状態',{exact:true}).selectOption('received');assert.equal(await stored(page),saved);await page.getByLabel('案件1の入稿受領日',{exact:true}).fill(tokyoToday());saved=await stored(page);
+ const out=await downloadJSON(page,()=>page.getByRole('button',{name:'助成・協賛・広告CSVを書き出す',exact:true}).click());assert.ok(out.includes("'=HOSTILE()"));const packet=JSON.parse(await downloadJSON(page,()=>page.getByRole('button',{name:'このモジュールのJSONを書き出す',exact:true}).click()));assert.equal(packet.moduleId,'funding');
+ await page.getByRole('button',{name:'共有用資料を作成',exact:true}).click();const preview=page.getByLabel('共有するJSONの内容',{exact:true});assert.equal((await preview.innerText()).includes('HOSTILE'),false);await page.getByRole('checkbox',{name:'作業データ（原稿・メモ・金額など）',exact:true}).check();assert.ok((await preview.innerText()).includes('HOSTILE'));assert.equal(await page.locator('#main img').count(),0);assert.equal(await page.evaluate(()=>Boolean(window.fundBad)),false);assert.deepEqual(requests,[]);assert.equal(await stored(page),saved);
+});
+test('FUND-05: legacy funding data stays intact without silently creating rows',async t=>{
+ const d=fullFixture();d.project.modules.funding.data={privateLegacy:'keep'};const page=await setup(t,{saved:d});await page.goto(origin+prefix+'modules/funding/index.html');assert.equal(await page.getByRole('button',{name:'案件を追加',exact:true}).count(),0);assert.deepEqual(JSON.parse(await stored(page)).project.modules.funding.data,{privateLegacy:'keep'});
 });

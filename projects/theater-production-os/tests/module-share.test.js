@@ -27,7 +27,7 @@ test('SHARE-01: each common checkbox adds only its allowed fields, all unchecked
   }
   assert.deepEqual(packet(d, 'flyer', options).project, {});
 });
-test('SHARE-02: all 16 modules project known data and strip extension keys at every supported nesting', async () => {
+test('SHARE-02: all 17 modules project known data and strip extension keys at every supported nesting', async () => {
   const d = await sample();
   d.project.privateExtension = 'PRIVATE_CANARY';
   d.project.venue.privateExtension = 'PRIVATE_CANARY';
