@@ -563,6 +563,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     ['venue', '会場CSVを書き出す', 'venue.csv'],
     ['rights', '作品概要を書き出す', 'rights.txt'],
     ['show-day', '当日記録を書き出す', 'show-day.txt'],
+    ['travel', '交通・宿泊・食事CSVを書き出す', 'travel.csv'],
     ['funding', '助成・協賛・広告CSVを書き出す', 'funding.csv'],
     ['contracts', '契約CSVを書き出す', 'contracts.csv'],
     ['archive', '資料一覧CSVを書き出す', 'archive.csv']
@@ -587,7 +588,7 @@ test('local security checks: all entrances keep hostile text inert, make no exte
     const packet = JSON.parse(await downloadJSON(page, () => page.getByRole('button', { name: 'このモジュールのJSONを書き出す', exact: true }).click()));
     assert.deepEqual(Object.keys(packet.document.project.modules), [id]); assert.equal(packet.document.project.documents.length, 0);
   }
-  assert.equal(downloadCount, 39, 'only explicit export actions download files');
+  assert.equal(downloadCount, 41, 'only explicit export actions download files');
   assert.deepEqual(externalRequests, []);
   assert.deepEqual(outgoingRequests, []);
 });
@@ -940,4 +941,22 @@ test('FUND-01/02/04/05: advertising material dates, safe CSV, selective shares a
 });
 test('FUND-05: legacy funding data stays intact without silently creating rows',async t=>{
  const d=fullFixture();d.project.modules.funding.data={privateLegacy:'keep'};const page=await setup(t,{saved:d});await page.goto(origin+prefix+'modules/funding/index.html');assert.equal(await page.getByRole('button',{name:'案件を追加',exact:true}).count(),0);assert.deepEqual(JSON.parse(await stored(page)).project.modules.funding.data,{privateLegacy:'keep'});
+});
+
+test('TRAVEL-01/02/03: mobile lodging dates, payment protection, saved cancellation and checkout link',async t=>{
+ const d=fullFixture(),before=structuredClone(d.project.modules.settlement),page=await setup(t,{saved:d,width:375});await page.goto(origin+prefix+'modules/travel/index.html');
+ await page.getByRole('button',{name:'手配を追加',exact:true}).click();await page.getByLabel('手配1の名称',{exact:true}).fill('架空の舞台班宿泊');await page.getByLabel('手配1の種別',{exact:true}).selectOption('lodging');await page.getByLabel('手配1の対象役割',{exact:true}).fill('舞台班A');await page.getByLabel('手配1の人数',{exact:true}).fill('2');
+ let saved=await stored(page);await page.getByLabel('手配1の状態',{exact:true}).selectOption('booked');assert.equal(await stored(page),saved);await page.getByLabel('手配1の利用日',{exact:true}).fill(addDays(tokyoToday(),-1));assert.equal(await stored(page),saved);await page.getByLabel('手配1のチェックアウト日（宿泊）',{exact:true}).fill(tokyoToday());await page.getByLabel('手配1の総額（円）',{exact:true}).fill('20000');await page.getByLabel('手配1の支払予定日',{exact:true}).fill(tokyoToday());saved=await stored(page);
+ await page.getByLabel('手配1の支払済み額（円）',{exact:true}).fill('5000');assert.equal(await stored(page),saved);await page.getByLabel('手配1の支払日',{exact:true}).fill(tokyoToday());saved=await stored(page);await page.getByLabel('手配1の支払済み額（円）',{exact:true}).fill('20001');assert.equal(await stored(page),saved);await page.getByLabel('手配1の支払済み額（円）',{exact:true}).fill('5000');await page.reload();assert.ok((await text(page)).includes('15,000円'));
+ await page.getByLabel('手配1の状態',{exact:true}).selectOption('cancelled');assert.ok((await text(page)).includes('5,000円'));assert.deepEqual(JSON.parse(await stored(page)).project.modules.settlement,before);assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.screenshot({path:'/tmp/os-travel-mobile.png',fullPage:true});
+ await page.getByRole('link',{name:'カレンダー',exact:true}).click();await page.getByLabel('予定の表示範囲',{exact:true}).selectOption('today');await page.getByRole('link',{name:/チェックアウト：架空の舞台班宿泊/}).click();await page.waitForURL('**/modules/travel/index.html?projectId=*#item-*');assert.equal(await page.getByLabel('手配1の名称',{exact:true}).inputValue(),'架空の舞台班宿泊');
+});
+test('TRAVEL-01/04/05: transport and meals, literal CSV, private sharing and no outside requests',async t=>{
+ const d=JSON.parse(await readFile(path.join(projectRoot,'samples/demo.json'),'utf8')),r=d.project.modules.travel.data.items[0];r.name='=HOSTILE()';r.notes='<img src=x onerror="window.travelBad=true">';
+ const page=await setup(t,{saved:d,width:375}),requests=[];page.on('request',r=>{if(new URL(r.url()).origin!==origin)requests.push(r.url());});let downloads=0;page.on('download',()=>downloads++);await page.goto(origin+prefix+'modules/travel/index.html');assert.equal(downloads,0);await page.getByLabel('手配1の移動手段',{exact:true}).fill('電車');await page.getByLabel('手配1の種別',{exact:true}).selectOption('meals');await page.getByLabel('手配1の食事内容',{exact:true}).fill('架空の弁当');const saved=await stored(page);
+ const out=await downloadJSON(page,()=>page.getByRole('button',{name:'交通・宿泊・食事CSVを書き出す',exact:true}).click());assert.ok(out.includes("'=HOSTILE()"));assert.ok(out.includes('架空の弁当'));const packet=JSON.parse(await downloadJSON(page,()=>page.getByRole('button',{name:'このモジュールのJSONを書き出す',exact:true}).click()));assert.equal(packet.moduleId,'travel');
+ await page.getByRole('button',{name:'共有用資料を作成',exact:true}).click();const preview=page.getByLabel('共有するJSONの内容',{exact:true});assert.equal((await preview.innerText()).includes('HOSTILE'),false);await page.getByRole('checkbox',{name:'作業データ（原稿・メモ・金額など）',exact:true}).check();assert.ok((await preview.innerText()).includes('HOSTILE'));assert.equal(await page.locator('#main img').count(),0);assert.equal(await page.evaluate(()=>Boolean(window.travelBad)),false);assert.deepEqual(requests,[]);assert.equal(await stored(page),saved);
+});
+test('TRAVEL-05: legacy travel extensions remain intact without silently initializing rows',async t=>{
+ const d=fullFixture();d.project.modules.travel.data={privateLegacy:'keep'};const page=await setup(t,{saved:d});await page.goto(origin+prefix+'modules/travel/index.html');assert.equal(await page.getByRole('button',{name:'手配を追加',exact:true}).count(),0);assert.deepEqual(JSON.parse(await stored(page)).project.modules.travel.data,{privateLegacy:'keep'});
 });

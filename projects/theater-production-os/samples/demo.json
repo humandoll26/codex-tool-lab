@@ -480,6 +480,37 @@
             }
           ]
         }
+      },
+      "travel": {
+        "id": "travel",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 0,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "travel-demo",
+              "name": "架空の舞台班移動",
+              "kind": "transport",
+              "roles": "舞台班A",
+              "people": 3,
+              "method": "電車",
+              "location": "サンプル劇場",
+              "date": "2026-11-30",
+              "endDate": null,
+              "meals": "",
+              "status": "booked",
+              "amount": 6000,
+              "paid": 0,
+              "paymentDue": "2026-12-05",
+              "paidDate": null,
+              "notes": "役割単位の架空の手配。"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [

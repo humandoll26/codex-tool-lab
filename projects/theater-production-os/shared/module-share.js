@@ -16,6 +16,7 @@ export const defaultShareOptions = () => Object.fromEntries(SHARE_OPTIONS.map(o 
 const pick = (source, keys) => Object.fromEntries(keys.split(' ').filter(k => Object.hasOwn(source, k)).map(k => [k, source[k]]));
 const rows = (source, keys) => source.map(row => pick(row, keys));
 const schemas = {
+  travel: ['version', 'items', 'id name kind roles people method location date endDate meals status amount paid paymentDue paidDate notes'],
   funding: ['version', 'items', 'id name kind organization status amount received receivedDate paymentDue applicationDue reportDue reportStatus reportDate adSlot materialDue materialStatus materialDate notes'],
   contracts: ['version', 'items', 'id name role status amount invoiceStatus invoiceDate paymentDue paymentStatus paidDate notes'],
   budget: ['variableCostPerAttendee referencePriceCategoryId', 'fixedCosts', 'id name amount'],
