@@ -1,3 +1,4 @@
+import { editor as travelEditor } from '../modules/travel/editor.js';
 import { editor as fundingEditor } from '../modules/funding/editor.js';
 import { editor as contractsEditor } from '../modules/contracts/editor.js';
 import { editor as archiveEditor } from '../modules/archive/editor.js';
@@ -31,7 +32,7 @@ const root = document.querySelector('#main');
 const isBudget = document.body.dataset.view === 'budget';
 const view = document.body.dataset.view;
 const isModule = Boolean(DEFINITIONS[view]);
-const editors = { funding: fundingEditor, contracts: contractsEditor, archive: archiveEditor, flyer: flyerEditor, distribution: distributionEditor, publicity: publicityEditor, tickets: ticketsEditor, rehearsal: rehearsalEditor, submissions: submissionsEditor, 'front-desk': front_deskEditor, 'settlement': settlementEditor, 'program': programEditor, 'stage-operations': stage_operationsEditor, 'venue': venueEditor, 'rights': rightsEditor, 'show-day': show_dayEditor };
+const editors = { travel: travelEditor, funding: fundingEditor, contracts: contractsEditor, archive: archiveEditor, flyer: flyerEditor, distribution: distributionEditor, publicity: publicityEditor, tickets: ticketsEditor, rehearsal: rehearsalEditor, submissions: submissionsEditor, 'front-desk': front_deskEditor, 'settlement': settlementEditor, 'program': programEditor, 'stage-operations': stage_operationsEditor, 'venue': venueEditor, 'rights': rightsEditor, 'show-day': show_dayEditor };
 const storage = { getItem: key => window.localStorage.getItem(key),
   setItem: (key, value) => window.localStorage.setItem(key, value), removeItem: key => window.localStorage.removeItem(key) };
 const loaded = readDocument(storage);
@@ -482,9 +483,9 @@ function render() {
   root.append(el('section', { className: 'card' }, el('h2', {}, '制作モジュール'),
     el('div', { className: 'toolbar' }, Object.entries(DEFINITIONS).map(([id, def]) => projectLink(def.name, `modules/${id}/index.html`)))));
   if (!isModule) {
-    const modules = [['交通・宿泊・ケータリング', '移動と滞在の準備']];
-    root.append(el('section', { className: 'card' }, el('h2', {}, 'これからのモジュール'),
-      el('p', { className: 'hint' }, '17の制作モジュールを利用できます。以下は将来予定です。'),
+    const modules = [['クラウド同期・共同編集', '複数端末と担当者で公演を共有']];
+    root.append(el('section', { className: 'card' }, el('h2', {}, '今後の拡張'),
+      el('p', { className: 'hint' }, '18の制作モジュールを利用できます。以下は将来予定です。'),
       el('ul', { className: 'module-list' }, modules.map(([name, description]) => el('li', {}, el('strong', {}, name), el('p', { className: 'hint' }, `${description} · 将来予定`))))));
   }
   update(false);
