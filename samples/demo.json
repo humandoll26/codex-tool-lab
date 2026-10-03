@@ -447,6 +447,39 @@
             }
           ]
         }
+      },
+      "funding": {
+        "id": "funding",
+        "status": "in-progress",
+        "startDate": null,
+        "dueDate": null,
+        "progress": 0,
+        "alerts": [],
+        "data": {
+          "version": 1,
+          "items": [
+            {
+              "id": "funding-demo",
+              "name": "架空の公演支援",
+              "kind": "grant",
+              "organization": "サンプル文化団体",
+              "status": "confirmed",
+              "amount": 50000,
+              "received": 0,
+              "receivedDate": null,
+              "paymentDue": "2026-12-10",
+              "applicationDue": "2026-10-15",
+              "reportDue": "2026-12-20",
+              "reportStatus": "pending",
+              "reportDate": null,
+              "adSlot": "",
+              "materialDue": null,
+              "materialStatus": "not-needed",
+              "materialDate": null,
+              "notes": "架空の記録。決算は別に確認する。"
+            }
+          ]
+        }
       }
     },
     "calendarEvents": [
